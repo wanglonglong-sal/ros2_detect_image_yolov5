@@ -1,0 +1,97 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-000e308108a37a1c9796.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "v4l2_camera",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-2349bd70f141160184e6.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "v4l2_camera::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-v4l2_camera-28e6ccab822366934e44.json",
+					"name" : "v4l2_camera",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "v4l2_camera_compose_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-v4l2_camera_compose_test-f2e74e62533c04cf5d11.json",
+					"name" : "v4l2_camera_compose_test",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "v4l2_camera_node::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-v4l2_camera_node-692307c2777192409f61.json",
+					"name" : "v4l2_camera_node",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "v4l2_camera_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-v4l2_camera_uninstall-7294190c85def71a41c3.json",
+					"name" : "v4l2_camera_uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/wanglonglong/Learn_ROS2/03.my_robot/build/v4l2_camera",
+		"source" : "/home/wanglonglong/Learn_ROS2/03.my_robot/src/v4l2_camera"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 6
+	}
+}

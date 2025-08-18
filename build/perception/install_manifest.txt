@@ -1,0 +1,17 @@
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/lib/perception/capture_camera_pub
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/lib/perception/camera_subscriber
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/ament_index/resource_index/package_run_dependencies/perception
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/ament_index/resource_index/parent_prefix_path/perception
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/environment/ament_prefix_path.sh
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/environment/ament_prefix_path.dsv
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/environment/path.sh
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/environment/path.dsv
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/local_setup.bash
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/local_setup.sh
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/local_setup.zsh
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/local_setup.dsv
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/package.dsv
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/ament_index/resource_index/packages/perception
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/cmake/perceptionConfig.cmake
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/cmake/perceptionConfig-version.cmake
+/home/wanglonglong/Learn_ROS2/03.my_robot/install/perception/share/perception/package.xml

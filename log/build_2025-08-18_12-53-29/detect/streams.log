@@ -1,0 +1,24 @@
+[0.811s] Invoking command in '/home/wanglonglong/Learn_ROS2/03.my_robot/src/detect': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PS1=(ros2_env) \[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ PYTHONPATH=/home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages:${PYTHONPATH} VIRTUAL_ENV_PROMPT=(ros2_env) /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/detect build --build-base /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build install --record /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/install.log --single-version-externally-managed install_data
+[0.971s] running egg_info
+[0.981s] writing ../../build/detect/detect.egg-info/PKG-INFO
+[0.981s] writing dependency_links to ../../build/detect/detect.egg-info/dependency_links.txt
+[0.982s] writing entry points to ../../build/detect/detect.egg-info/entry_points.txt
+[0.982s] writing requirements to ../../build/detect/detect.egg-info/requires.txt
+[0.982s] writing top-level names to ../../build/detect/detect.egg-info/top_level.txt
+[1.004s] reading manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+[1.007s] writing manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+[1.007s] running build
+[1.007s] running build_py
+[1.007s] copying detect/mask_detect.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect
+[1.007s] running install
+[1.012s] running install_lib
+[1.024s] copying /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect/mask_detect.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect
+[1.024s] byte-compiling /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect/mask_detect.py to mask_detect.cpython-312.pyc
+[1.025s] running install_data
+[1.025s] running install_egg_info
+[1.038s] removing '/home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect-0.0.0-py3.12.egg-info' (and everything under it)
+[1.038s] Copying ../../build/detect/detect.egg-info to /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect-0.0.0-py3.12.egg-info
+[1.040s] running install_scripts
+[1.128s] Installing mask_detect script to /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/detect
+[1.129s] writing list of installed files to '/home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/install.log'
+[1.148s] Invoked command in '/home/wanglonglong/Learn_ROS2/03.my_robot/src/detect' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PS1=(ros2_env) \[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ PYTHONPATH=/home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages:${PYTHONPATH} VIRTUAL_ENV_PROMPT=(ros2_env) /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/detect build --build-base /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build install --record /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/install.log --single-version-externally-managed install_data

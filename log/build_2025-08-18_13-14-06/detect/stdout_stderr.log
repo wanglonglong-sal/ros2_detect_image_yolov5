@@ -1,0 +1,22 @@
+running egg_info
+writing ../../build/detect/detect.egg-info/PKG-INFO
+writing dependency_links to ../../build/detect/detect.egg-info/dependency_links.txt
+writing entry points to ../../build/detect/detect.egg-info/entry_points.txt
+writing requirements to ../../build/detect/detect.egg-info/requires.txt
+writing top-level names to ../../build/detect/detect.egg-info/top_level.txt
+reading manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+writing manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+running build
+running build_py
+copying detect/mask_detect.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect
+running install
+running install_lib
+copying /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect/mask_detect.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect
+byte-compiling /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect/mask_detect.py to mask_detect.cpython-312.pyc
+running install_data
+running install_egg_info
+removing '/home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect-0.0.0-py3.12.egg-info' (and everything under it)
+Copying ../../build/detect/detect.egg-info to /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect-0.0.0-py3.12.egg-info
+running install_scripts
+Installing mask_detect script to /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/detect
+writing list of installed files to '/home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/install.log'

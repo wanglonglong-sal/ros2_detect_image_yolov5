@@ -1,0 +1,35 @@
+running egg_info
+creating ../../build/detect/detect.egg-info
+writing ../../build/detect/detect.egg-info/PKG-INFO
+writing dependency_links to ../../build/detect/detect.egg-info/dependency_links.txt
+writing entry points to ../../build/detect/detect.egg-info/entry_points.txt
+writing requirements to ../../build/detect/detect.egg-info/requires.txt
+writing top-level names to ../../build/detect/detect.egg-info/top_level.txt
+writing manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+reading manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+writing manifest file '../../build/detect/detect.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect
+copying detect/mask_detect.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect
+copying detect/__init__.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect
+running install
+running install_lib
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect
+copying /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect/mask_detect.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect
+copying /home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/build/lib/detect/__init__.py -> /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect
+byte-compiling /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect/mask_detect.py to mask_detect.cpython-312.pyc
+byte-compiling /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect/__init__.py to __init__.cpython-312.pyc
+running install_data
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/share/ament_index
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/share/ament_index/resource_index
+creating /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/share/ament_index/resource_index/packages
+copying resource/detect -> /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/share/ament_index/resource_index/packages
+copying package.xml -> /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/share/detect
+running install_egg_info
+Copying ../../build/detect/detect.egg-info to /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/python3.12/site-packages/detect-0.0.0-py3.12.egg-info
+running install_scripts
+Installing mask_detect script to /home/wanglonglong/Learn_ROS2/03.my_robot/install/detect/lib/detect
+writing list of installed files to '/home/wanglonglong/Learn_ROS2/03.my_robot/build/detect/install.log'

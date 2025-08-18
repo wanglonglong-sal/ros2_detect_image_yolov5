@@ -1,0 +1,2 @@
+[console_scripts]
+mask_detect = detect.mask_detect:main
