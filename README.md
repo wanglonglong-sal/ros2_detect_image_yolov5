@@ -20,3 +20,6 @@ run launch: ros2 launch bringup launch.py
 -launch.py will activate the node of v4l2 and camera_subscriber(this node has no further usage)
 enter python virtual environment: source ~/ros2_env/bin/activate
 run python node: ros2 run detect mask_detect
+create new package: 
+-cd src
+-ros2 pkg create trackor --build-type ament_python --dependencies rclpy --node-name object_detect 
