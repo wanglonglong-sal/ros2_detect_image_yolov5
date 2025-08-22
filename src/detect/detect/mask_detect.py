@@ -8,6 +8,8 @@ import cv2
 import os
 import sys
 
+CLASS_NAMES = ['no_mask', 'mask']  # 0->no_mask, 1->mask（按你的训练集顺序来）
+
 class YoloV5OnnxSubscriber(Node):
     def __init__(self):
         super().__init__('yolov5_onnx_subscriber')
@@ -38,7 +40,7 @@ class YoloV5OnnxSubscriber(Node):
             Image,
             '/image_raw',
             self.listener_callback,
-            10
+            109
         )
 
     def preprocess(self, image):
@@ -87,13 +89,18 @@ class YoloV5OnnxSubscriber(Node):
         return final_boxes, final_scores, final_classes
 
     def draw_detections(self, image, boxes, scores, class_ids):
-        """画检测框"""
         for (box, score, cls_id) in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box
-            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(image, f"{cls_id}:{score:.2f}", 
-                        (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 
-                        0.5, (0, 255, 0), 2)
+
+            # 可选：不同类别不同颜色
+            label = CLASS_NAMES[cls_id] if 0 <= cls_id < len(CLASS_NAMES) else str(cls_id)
+            color = (0, 0, 255) if label == 'no_mask' else (0, 255, 0)  # 红色=未戴口罩，绿色=戴口罩
+
+            cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+            y_text = max(0, y1 - 5)
+            cv2.putText(image, f"{label}:{score:.2f}",
+                        (x1, y_text), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6, color, 2)
         return image
 
     def listener_callback(self, msg):

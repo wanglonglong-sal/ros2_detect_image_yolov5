@@ -1,0 +1,5 @@
+v4l2_camera:
+  ros__parameters:
+    video_device: /dev/video0
+    image_size: [640, 480]
+    fps: 30
