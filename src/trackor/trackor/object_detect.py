@@ -34,8 +34,8 @@ class ObjectTrackerNode(Node):
         dets = []
 
         for det in msg.detections:
-            x = det.bbox.center.x
-            y = det.bbox.center.y
+            x = det.bbox.center.position.x
+            y = det.bbox.center.position.y
             w = det.bbox.size_x
             h = det.bbox.size_y
             score = det.results[0].score if det.results else 1.0
@@ -59,8 +59,9 @@ class ObjectTrackerNode(Node):
         for track in tracks:
             x1, y1, x2, y2, track_id = track
             bbox = Detection2D()
-            bbox.bbox.center.x = float((x1 + x2) / 2)
-            bbox.bbox.center.y = float((y1 + y2) / 2)
+
+            bbox.bbox.center.position.x = float((x1 + x2) / 2)
+            bbox.bbox.center.position.y = float((y1 + y2) / 2)
             bbox.bbox.center.theta = 0.0
             bbox.bbox.size_x = float(x2 - x1)
             bbox.bbox.size_y = float(y2 - y1)
@@ -73,8 +74,9 @@ class ObjectTrackerNode(Node):
             ohwp.hypothesis = hypothesis
 
             pwc = PoseWithCovariance()
-            pwc.pose.position.x = bbox.bbox.center.x
-            pwc.pose.position.y = bbox.bbox.center.y
+            pwc.pose.position.x = bbox.bbox.center.position.x
+            pwc.pose.position.y = bbox.bbox.center.position.y
+
             pwc.pose.orientation.w = 1.0
             ohwp.pose = pwc
 
