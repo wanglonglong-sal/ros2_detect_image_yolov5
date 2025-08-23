@@ -11,7 +11,6 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 from deep_sort_realtime.deepsort_tracker import DeepSort
-import numpy as np
 
 class ObjectTrackerNode(Node):
     def __init__(self):
@@ -46,8 +45,7 @@ class ObjectTrackerNode(Node):
 
     def detection_callback(self, msg: Detection2DArray):
         dets = []
-        labels = []
-        scores = []
+        det_info = []
 
         for det in msg.detections:
             x = det.bbox.center.position.x
@@ -58,14 +56,15 @@ class ObjectTrackerNode(Node):
             label = det.results[0].hypothesis.class_id if det.results else ''
             x1 = x - w / 2
             y1 = y - h / 2
-            dets.append([x1, y1, w, h, score])
-            labels.append(label)
-            scores.append(score)
+            x2 = x1 + w
+            y2 = y1 + h
+            bbox = [x1, y1, x2, y2]
+            dets.append((bbox, score, label))
+            det_info.append((bbox, label, score))
 
         if len(dets) == 0 or self.last_image is None:
             return
 
-        dets_np = np.array(dets)
         tracks = self.tracker.update_tracks(dets, frame=self.last_image)
 
         tracked_msg = Detection2DArray()
@@ -83,10 +82,8 @@ class ObjectTrackerNode(Node):
             best_iou = 0.0
             best_label = ''
             best_score = 0.0
-            for det_box, label, score in zip(dets_np, labels, scores):
-                dx1, dy1, dw, dh, _ = det_box
-                dx2 = dx1 + dw
-                dy2 = dy1 + dh
+            for det_box, label, score in det_info:
+                dx1, dy1, dx2, dy2 = det_box
                 inter_x1 = max(x1, dx1)
                 inter_y1 = max(y1, dy1)
                 inter_x2 = min(x2, dx2)
