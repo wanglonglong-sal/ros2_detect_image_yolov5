@@ -112,9 +112,9 @@ class YoloV5OnnxSubscriber(Node):
             detection = Detection2D()
 
             x1, y1, x2, y2 = box
-            center2d = Pose2D()  # ← 这里必须是 vision_msgs.Pose2D
-            center2d.x = (x1 + x2) / 2.0
-            center2d.y = (y1 + y2) / 2.0
+            center2d = Pose2D()
+            center2d.position.x = (x1 + x2) / 2.0
+            center2d.position.y = (y1 + y2) / 2.0
             center2d.theta = 0.0
             detection.bbox.center = center2d
 
@@ -130,8 +130,8 @@ class YoloV5OnnxSubscriber(Node):
             ohwp.hypothesis = hyp
 
             pwc = PoseWithCovariance()
-            pwc.pose.position.x = center2d.x
-            pwc.pose.position.y = center2d.y
+            pwc.pose.position.x = center2d.position.x
+            pwc.pose.position.y = center2d.position.y
             pwc.pose.position.z = 0.0
             pwc.pose.orientation.w = 1.0
             ohwp.pose = pwc
