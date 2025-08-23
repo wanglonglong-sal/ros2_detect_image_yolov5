@@ -99,11 +99,13 @@ class ObjectTrackerNode(Node):
                     best_score = score
 
             bbox = Detection2D()
+
             bbox.bbox.center.position.x = float((x1 + x2) / 2)
             bbox.bbox.center.position.y = float((y1 + y2) / 2)
             bbox.bbox.center.theta = 0.0
             bbox.bbox.size_x = float(x2 - x1)
             bbox.bbox.size_y = float(y2 - y1)
+
 
             hyp_cls = ObjectHypothesis()
             hyp_cls.class_id = best_label
@@ -111,9 +113,11 @@ class ObjectTrackerNode(Node):
             ohwp_cls = ObjectHypothesisWithPose()
             ohwp_cls.hypothesis = hyp_cls
 
+
             pwc = PoseWithCovariance()
             pwc.pose.position.x = bbox.bbox.center.position.x
             pwc.pose.position.y = bbox.bbox.center.position.y
+
             pwc.pose.orientation.w = 1.0
             ohwp_cls.pose = pwc
 
@@ -126,6 +130,7 @@ class ObjectTrackerNode(Node):
             ohwp_id.hypothesis = hyp_id
             ohwp_id.pose = pwc
             bbox.results.append(ohwp_id)
+
 
             tracked_msg.detections.append(bbox)
 
