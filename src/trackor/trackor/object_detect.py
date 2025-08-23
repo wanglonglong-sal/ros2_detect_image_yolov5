@@ -59,6 +59,7 @@ class ObjectTrackerNode(Node):
         for track in tracks:
             x1, y1, x2, y2, track_id = track
             bbox = Detection2D()
+
             bbox.bbox.center.position.x = float((x1 + x2) / 2)
             bbox.bbox.center.position.y = float((y1 + y2) / 2)
             bbox.bbox.center.theta = 0.0
@@ -75,6 +76,7 @@ class ObjectTrackerNode(Node):
             pwc = PoseWithCovariance()
             pwc.pose.position.x = bbox.bbox.center.position.x
             pwc.pose.position.y = bbox.bbox.center.position.y
+
             pwc.pose.orientation.w = 1.0
             ohwp.pose = pwc
 
