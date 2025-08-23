@@ -7,6 +7,9 @@ from vision_msgs.msg import (
     ObjectHypothesisWithPose,
 )
 from geometry_msgs.msg import PoseWithCovariance
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+import cv2
 from trackor.sort import Sort
 import numpy as np
 
@@ -14,11 +17,19 @@ class ObjectTrackerNode(Node):
     def __init__(self):
         super().__init__('object_tracker')
         self.tracker = Sort()
+        self.bridge = CvBridge()
+        self.last_image = None
 
         self.subscription = self.create_subscription(
             Detection2DArray,
             '/detections',
             self.detection_callback,
+            10
+        )
+        self.image_sub = self.create_subscription(
+            Image,
+            '/image_raw',
+            self.image_callback,
             10
         )
 
@@ -30,34 +41,63 @@ class ObjectTrackerNode(Node):
 
         self.get_logger().info('ObjectTrackerNode 已启动，等待检测结果...')
 
+    def image_callback(self, msg: Image):
+        self.last_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
     def detection_callback(self, msg: Detection2DArray):
         dets = []
+        labels = []
+        scores = []
 
         for det in msg.detections:
             x = det.bbox.center.position.x
             y = det.bbox.center.position.y
             w = det.bbox.size_x
             h = det.bbox.size_y
-            score = det.results[0].score if det.results else 1.0
+            score = det.results[0].hypothesis.score if det.results else 1.0
+            label = det.results[0].hypothesis.class_id if det.results else ''
             x1 = x - w / 2
             y1 = y - h / 2
             x2 = x + w / 2
             y2 = y + h / 2
             dets.append([x1, y1, x2, y2, score])
+            labels.append(label)
+            scores.append(score)
 
         if len(dets) == 0:
             return
 
-        # 转换为 numpy 输入到 tracker
         dets_np = np.array(dets)
         tracks = self.tracker.update(dets_np)
 
-        # 发布跟踪后的结果
         tracked_msg = Detection2DArray()
         tracked_msg.header = msg.header
 
-        for track in tracks:
+        draw_img = self.last_image.copy() if self.last_image is not None else None
+
+        for idx, track in enumerate(tracks):
             x1, y1, x2, y2, track_id = track
+
+            # match detection to track via IoU
+            best_iou = 0.0
+            best_label = ''
+            best_score = 0.0
+            for det_box, label, score in zip(dets_np, labels, scores):
+                dx1, dy1, dx2, dy2, _ = det_box
+                inter_x1 = max(x1, dx1)
+                inter_y1 = max(y1, dy1)
+                inter_x2 = min(x2, dx2)
+                inter_y2 = min(y2, dy2)
+                inter_area = max(0.0, inter_x2 - inter_x1) * max(0.0, inter_y2 - inter_y1)
+                box_area = (x2 - x1) * (y2 - y1)
+                det_area = (dx2 - dx1) * (dy2 - dy1)
+                union = box_area + det_area - inter_area + 1e-6
+                iou = inter_area / union
+                if iou > best_iou:
+                    best_iou = iou
+                    best_label = label
+                    best_score = score
+
             bbox = Detection2D()
 
             bbox.bbox.center.position.x = float((x1 + x2) / 2)
@@ -66,25 +106,46 @@ class ObjectTrackerNode(Node):
             bbox.bbox.size_x = float(x2 - x1)
             bbox.bbox.size_y = float(y2 - y1)
 
-            hypothesis = ObjectHypothesis()
-            hypothesis.id = int(track_id)
-            hypothesis.score = 1.0  # 跟踪置信度可设为 1.0 或从检测中继承
 
-            ohwp = ObjectHypothesisWithPose()
-            ohwp.hypothesis = hypothesis
+            hyp_cls = ObjectHypothesis()
+            hyp_cls.class_id = best_label
+            hyp_cls.score = float(best_score)
+            ohwp_cls = ObjectHypothesisWithPose()
+            ohwp_cls.hypothesis = hyp_cls
+
 
             pwc = PoseWithCovariance()
             pwc.pose.position.x = bbox.bbox.center.position.x
             pwc.pose.position.y = bbox.bbox.center.position.y
 
             pwc.pose.orientation.w = 1.0
-            ohwp.pose = pwc
+            ohwp_cls.pose = pwc
 
-            bbox.results.append(ohwp)
+            bbox.results.append(ohwp_cls)
+
+            hyp_id = ObjectHypothesis()
+            hyp_id.class_id = str(int(track_id))
+            hyp_id.score = float(best_score)
+            ohwp_id = ObjectHypothesisWithPose()
+            ohwp_id.hypothesis = hyp_id
+            ohwp_id.pose = pwc
+            bbox.results.append(ohwp_id)
+
+
             tracked_msg.detections.append(bbox)
+
+            if draw_img is not None:
+                cv2.rectangle(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+                text = f"ID:{int(track_id)} {best_label}:{best_score:.2f}"
+                cv2.putText(draw_img, text, (int(x1), max(0, int(y1) - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
         self.publisher.publish(tracked_msg)
         self.get_logger().info(f'发布跟踪目标数量: {len(tracked_msg.detections)}')
+
+        if draw_img is not None:
+            cv2.imshow('Tracked Objects', draw_img)
+            cv2.waitKey(1)
 
 def main(args=None):
     rclpy.init(args=args)
