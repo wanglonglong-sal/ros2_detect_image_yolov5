@@ -1,10 +1,14 @@
 import rclpy
 from rclpy.node import Node
-from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithPose
-from std_msgs.msg import Header
+from vision_msgs.msg import (
+    Detection2DArray,
+    Detection2D,
+    ObjectHypothesis,
+    ObjectHypothesisWithPose,
+)
+from geometry_msgs.msg import PoseWithCovariance
 from trackor.sort import Sort
 import numpy as np
-from geometry_msgs.msg import Pose2D
 
 class ObjectTrackerNode(Node):
     def __init__(self):
@@ -30,11 +34,11 @@ class ObjectTrackerNode(Node):
         dets = []
 
         for det in msg.detections:
-            x = det.bbox.center.x
-            y = det.bbox.center.y
+            x = det.bbox.center.position.x
+            y = det.bbox.center.position.y
             w = det.bbox.size_x
             h = det.bbox.size_y
-            score = det.results[0].score if det.results else 1.0
+            score = det.results[0].hypothesis.score if det.results else 1.0
             x1 = x - w / 2
             y1 = y - h / 2
             x2 = x + w / 2
@@ -57,14 +61,24 @@ class ObjectTrackerNode(Node):
             bbox = Detection2D()
             bbox.bbox.center.position.x = float((x1 + x2) / 2)
             bbox.bbox.center.position.y = float((y1 + y2) / 2)
+            bbox.bbox.center.theta = 0.0
             bbox.bbox.size_x = float(x2 - x1)
             bbox.bbox.size_y = float(y2 - y1)
 
-            hyp = ObjectHypothesisWithPose()
-            hyp.id = int(track_id)
-            hyp.score = 1.0  # 跟踪置信度可设为 1.0 或从检测中继承
+            hypothesis = ObjectHypothesis()
+            hypothesis.id = int(track_id)
+            hypothesis.score = 1.0  # 跟踪置信度可设为 1.0 或从检测中继承
 
-            bbox.results.append(hyp)
+            ohwp = ObjectHypothesisWithPose()
+            ohwp.hypothesis = hypothesis
+
+            pwc = PoseWithCovariance()
+            pwc.pose.position.x = bbox.bbox.center.position.x
+            pwc.pose.position.y = bbox.bbox.center.position.y
+            pwc.pose.orientation.w = 1.0
+            ohwp.pose = pwc
+
+            bbox.results.append(ohwp)
             tracked_msg.detections.append(bbox)
 
         self.publisher.publish(tracked_msg)
