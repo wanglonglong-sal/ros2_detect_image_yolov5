@@ -151,9 +151,9 @@ class YoloV5OnnxSubscriber(Node):
             boxes, scores, class_ids = self.postprocess(outputs, img_resized.shape, orig_shape)
 
             # 可视化
-            result_img = self.draw_detections(cv_image.copy(), boxes, scores, class_ids)
-            cv2.imshow("YOLOv5 ONNX Detection", result_img)
-            cv2.waitKey(1)
+            # result_img = self.draw_detections(cv_image.copy(), boxes, scores, class_ids)
+            # cv2.imshow("YOLOv5 ONNX Detection", result_img)
+            # cv2.waitKey(1)
 
             # 发布检测消息
             self.publish_detections(boxes, scores, class_ids, orig_shape)
