@@ -66,7 +66,8 @@ class ObjectTrackerNode(Node):
             bbox.bbox.size_y = float(y2 - y1)
 
             hypothesis = ObjectHypothesis()
-            hypothesis.id = int(track_id)
+            # ObjectHypothesis uses `class_id` to identify the tracked object
+            hypothesis.class_id = str(int(track_id))
             hypothesis.score = 1.0  # 跟踪置信度可设为 1.0 或从检测中继承
 
             ohwp = ObjectHypothesisWithPose()
