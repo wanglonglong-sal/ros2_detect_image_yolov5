@@ -7,6 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     image_topic_arg = DeclareLaunchArgument('image_topic', default_value='/image_raw')
+    output_video_arg = DeclareLaunchArgument('output_video_path', default_value='tracked_output.mp4')
 
     yolo_node = Node(
         package='detect',
@@ -20,6 +21,7 @@ def generate_launch_description():
         executable='object_detect',
         name='object_tracker',
         output='screen',
+        parameters=[{'output_video_path': LaunchConfiguration('output_video_path')}],
     )
 
     sub_node = Node(
@@ -29,4 +31,4 @@ def generate_launch_description():
         output='screen',
     )
 
-    return LaunchDescription([image_topic_arg, yolo_node, tracker_node, sub_node])
+    return LaunchDescription([image_topic_arg, output_video_arg, yolo_node, tracker_node, sub_node])

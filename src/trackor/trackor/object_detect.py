@@ -19,6 +19,16 @@ class ObjectTrackerNode(Node):
         self.bridge = CvBridge()
         self.last_image = None
 
+        self.declare_parameter('output_video_path', 'tracked_output.mp4')
+        self.declare_parameter('output_fps', 30.0)
+        self.output_path = (
+            self.get_parameter('output_video_path').get_parameter_value().string_value
+        )
+        self.output_fps = (
+            self.get_parameter('output_fps').get_parameter_value().double_value
+        )
+        self.writer = None
+
         self.subscription = self.create_subscription(
             Detection2DArray,
             '/detections',
@@ -142,10 +152,19 @@ class ObjectTrackerNode(Node):
 
         self.publisher.publish(tracked_msg)
         self.get_logger().info(f'发布跟踪目标数量: {len(tracked_msg.detections)}')
-
         if draw_img is not None:
-            cv2.imshow('Tracked Objects', draw_img)
-            cv2.waitKey(1)
+            if self.writer is None:
+                h, w = draw_img.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                self.writer = cv2.VideoWriter(
+                    self.output_path, fourcc, self.output_fps, (w, h)
+                )
+            self.writer.write(draw_img)
+
+    def destroy_node(self):
+        if self.writer is not None:
+            self.writer.release()
+        super().destroy_node()
 
 def main(args=None):
     rclpy.init(args=args)
