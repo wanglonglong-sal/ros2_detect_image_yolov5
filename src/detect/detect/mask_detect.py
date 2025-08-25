@@ -54,6 +54,19 @@ class YoloV5OnnxSubscriber(Node):
             self.get_logger().fatal(f'无法打开视频文件: {VIDEO_PATH}')
             sys.exit(1)
 
+        # 声明输出视频路径参数并初始化写入器
+        self.declare_parameter(
+            'output_video_path', '/mnt/d/Dataset/Output/detect_output.mp4'
+        )
+        output_path = (
+            self.get_parameter('output_video_path').get_parameter_value().string_value
+        )
+        fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
         self.image_pub = self.create_publisher(Image, '/image_raw', 10)
         self.det_pub = self.create_publisher(Detection2DArray, '/detections', 10)
 
@@ -153,6 +166,8 @@ class YoloV5OnnxSubscriber(Node):
         ret, frame = self.cap.read()
         if not ret:
             self.get_logger().info('视频读取完毕')
+            if hasattr(self, 'writer'):
+                self.writer.release()
             self.destroy_node()
             rclpy.shutdown()
             return
@@ -165,6 +180,9 @@ class YoloV5OnnxSubscriber(Node):
             img_input, img_resized = self.preprocess(frame)
             outputs = self.session.run(None, {self.input_name: img_input})
             boxes, scores, class_ids = self.postprocess(outputs, img_resized.shape, orig_shape)
+            draw_img = self.draw_detections(frame.copy(), boxes, scores, class_ids)
+            if hasattr(self, 'writer'):
+                self.writer.write(draw_img)
             self.publish_detections(boxes, scores, class_ids, orig_shape)
         except Exception as e:
             self.get_logger().error(f'处理视频帧时出错: {e}')
@@ -180,6 +198,8 @@ def main(args=None):
         cv2.destroyAllWindows()
         if hasattr(node, 'cap'):
             node.cap.release()
+        if hasattr(node, 'writer'):
+            node.writer.release()
         if rclpy.ok():
             node.destroy_node()
             rclpy.shutdown()
