@@ -10,13 +10,12 @@ from geometry_msgs.msg import PoseWithCovariance
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
-from trackor.sort import Sort
-import numpy as np
+from deep_sort_realtime.deepsort_tracker import DeepSort
 
 class ObjectTrackerNode(Node):
     def __init__(self):
         super().__init__('object_tracker')
-        self.tracker = Sort()
+        self.tracker = DeepSort(max_age=30, n_init=3, nn_budget=100)
         self.bridge = CvBridge()
         self.last_image = None
 
@@ -46,8 +45,7 @@ class ObjectTrackerNode(Node):
 
     def detection_callback(self, msg: Detection2DArray):
         dets = []
-        labels = []
-        scores = []
+        det_info = []
 
         for det in msg.detections:
             x = det.bbox.center.position.x
@@ -58,32 +56,34 @@ class ObjectTrackerNode(Node):
             label = det.results[0].hypothesis.class_id if det.results else ''
             x1 = x - w / 2
             y1 = y - h / 2
-            x2 = x + w / 2
-            y2 = y + h / 2
-            dets.append([x1, y1, x2, y2, score])
-            labels.append(label)
-            scores.append(score)
+            x2 = x1 + w
+            y2 = y1 + h
+            bbox = [x1, y1, x2, y2]
+            dets.append((bbox, score, label))
+            det_info.append((bbox, label, score))
 
-        if len(dets) == 0:
+        if len(dets) == 0 or self.last_image is None:
             return
 
-        dets_np = np.array(dets)
-        tracks = self.tracker.update(dets_np)
+        tracks = self.tracker.update_tracks(dets, frame=self.last_image)
 
         tracked_msg = Detection2DArray()
         tracked_msg.header = msg.header
 
         draw_img = self.last_image.copy() if self.last_image is not None else None
 
-        for idx, track in enumerate(tracks):
-            x1, y1, x2, y2, track_id = track
+        for track in tracks:
+            if not track.is_confirmed():
+                continue
+            x1, y1, x2, y2 = track.to_ltrb()
+            track_id = track.track_id
 
             # match detection to track via IoU
             best_iou = 0.0
             best_label = ''
             best_score = 0.0
-            for det_box, label, score in zip(dets_np, labels, scores):
-                dx1, dy1, dx2, dy2, _ = det_box
+            for det_box, label, score in det_info:
+                dx1, dy1, dx2, dy2 = det_box
                 inter_x1 = max(x1, dx1)
                 inter_y1 = max(y1, dy1)
                 inter_x2 = min(x2, dx2)

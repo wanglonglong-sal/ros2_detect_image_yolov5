@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'deep-sort-realtime'],
     zip_safe=True,
     maintainer='wanglonglong',
     maintainer_email='wanglonglong02@gmail.com',
