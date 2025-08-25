@@ -61,7 +61,8 @@ yt-dlp videAddress
 When you want to split the video to several parts, you can add the separated time for the command:
 yt-dlp https://www.bilibili.com/video/xxxx --exec "ffmpeg -i {} -ss 00:00:00 -to 00:02:00 -c copy {}_part1.mp4"
 
-yt-dlp https://www.bilibili.com/video/BV1TT4y1V7do?t=15.1 --exec "ffmpeg -i {} -ss 00:00:00 -to 00:02:00 -c copy {}_part1.mp4"
+yt-dlp https://www.bilibili.com/video/BV1TT4y1V7do?t=15.1 --exec "ffmpeg -i {} -ss 00:00:00 -to 00:00:25 -c copy {}_part1.mp4"
+yt-dlp https://www.bilibili.com/video/BV1TT4y1V7do?t=15.1 --exec "ffmpeg -i {} -ss 00:26:00 -to 00:01:00 -c copy {}_part2.mp4"
 
 If you have downloaded the video, then you want to split it. You could use ffmpeg
 ffmpeg -i input.mp4 -ss 00:00:00 -to 00:02:00 -c copy part1.mp4
