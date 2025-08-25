@@ -153,6 +153,7 @@ class YoloV5OnnxSubscriber(Node):
         ret, frame = self.cap.read()
         if not ret:
             self.get_logger().info('视频读取完毕')
+            self.destroy_node()
             rclpy.shutdown()
             return
 
@@ -179,8 +180,9 @@ def main(args=None):
         cv2.destroyAllWindows()
         if hasattr(node, 'cap'):
             node.cap.release()
-        node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            node.destroy_node()
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
