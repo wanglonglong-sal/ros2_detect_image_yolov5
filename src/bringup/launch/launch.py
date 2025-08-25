@@ -1,13 +1,14 @@
 # bringup/launch/launch.py
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     image_topic_arg = DeclareLaunchArgument('image_topic', default_value='/image_raw')
-    output_video_arg = DeclareLaunchArgument('output_video_path', default_value='tracked_output.mp4')
+    output_video_arg = DeclareLaunchArgument(
+        'output_video_path', default_value='/mnt/d/Dataset/Output/tracked_output.mp4'
+    )
 
     yolo_node = Node(
         package='detect',

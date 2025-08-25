@@ -19,7 +19,9 @@ class ObjectTrackerNode(Node):
         self.bridge = CvBridge()
         self.last_image = None
 
-        self.declare_parameter('output_video_path', 'tracked_output.mp4')
+        self.declare_parameter(
+            'output_video_path', '/mnt/d/Dataset/Output/tracked_output.mp4'
+        )
         self.declare_parameter('output_fps', 30.0)
         self.output_path = (
             self.get_parameter('output_video_path').get_parameter_value().string_value
