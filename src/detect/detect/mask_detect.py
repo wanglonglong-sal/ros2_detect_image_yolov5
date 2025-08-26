@@ -218,6 +218,19 @@ class YoloV5OnnxSubscriber(Node):
             img_input, img_resized = self.preprocess(frame)
             outputs = self.session.run(None, {self.input_name: img_input})
             boxes, scores, class_ids = self.postprocess(outputs, img_resized.shape, orig_shape)
+
+            # 过滤图像下部区域的检测结果
+            h = frame.shape[0]
+            ignore_ratio = 0.2
+            filtered = []
+            for box, score, cls in zip(boxes, scores, class_ids):
+                if box[1] > h * (1 - ignore_ratio):
+                    continue
+                filtered.append((box, score, cls))
+            boxes, scores, class_ids = (
+                map(list, zip(*filtered)) if filtered else ([], [], [])
+            )
+
             draw_img = self.draw_detections(frame.copy(), boxes, scores, class_ids)
             if hasattr(self, 'writer'):
                 self.writer.write(draw_img)
