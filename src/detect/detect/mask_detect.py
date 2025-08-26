@@ -62,8 +62,13 @@ class YoloV5OnnxSubscriber(Node):
 
         # 加载 ONNX 模型
         try:
-            self.session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
+            self.session = ort.InferenceSession(
+                model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+            )
             self.get_logger().info(f'ONNX 模型加载成功: {model_path}')
+            self.get_logger().info(
+                f"ONNX Runtime providers: {self.session.get_providers()}"
+            )
         except Exception as e:
             self.get_logger().fatal(f'ONNX 模型加载失败: {str(e)}')
             sys.exit(1)
