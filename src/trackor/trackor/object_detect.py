@@ -58,9 +58,9 @@ class ObjectTrackerNode(Node):
             y1 = y - h / 2
             x2 = x1 + w
             y2 = y1 + h
-            bbox = [x1, y1, x2, y2]
+            bbox = [x1, y1, w, h]
             dets.append((bbox, score, label))
-            det_info.append((bbox, label, score))
+            det_info.append(([x1, y1, x2, y2], label, score))
 
         if len(dets) == 0 or self.last_image is None:
             return
