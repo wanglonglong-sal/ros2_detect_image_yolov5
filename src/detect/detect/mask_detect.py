@@ -221,7 +221,7 @@ class YoloV5OnnxSubscriber(Node):
 
             # 过滤图像下部区域的检测结果
             h = frame.shape[0]
-            ignore_ratio = 0.2
+            ignore_ratio = 0.25
             filtered = []
             for box, score, cls in zip(boxes, scores, class_ids):
                 if box[1] > h * (1 - ignore_ratio):
