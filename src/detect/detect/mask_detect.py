@@ -8,12 +8,46 @@ import cv2
 import os
 import sys
 from geometry_msgs.msg import PoseWithCovariance
-from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesis, ObjectHypothesisWithPose, Pose2D
+from vision_msgs.msg import (
+    Detection2D,
+    Detection2DArray,
+    ObjectHypothesis,
+    ObjectHypothesisWithPose,
+    Pose2D,
+)
 
+# COCO 数据集的类别名称，用于将检测到的 ID 转换为可读标签
+COCO_CLASS_NAMES = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
+    'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
+    'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
+    'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
+    'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
+    'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',
+    'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
+    'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
+    'toothbrush'
+]
 
-CLASS_NAMES = ['no_mask', 'mask']  # 0->no_mask, 1->mask（按你的训练集顺序来）
+# 不同交通参与者对应的颜色（BGR）
+CLASS_COLORS = {
+    'person': (0, 255, 0),
+    'bicycle': (255, 0, 0),
+    'car': (0, 0, 255),
+    'motorcycle': (255, 0, 255),
+    'bus': (0, 255, 255),
+    'truck': (255, 255, 0),
+}
+
+VIDEO_PATH = '/mnt/d/Dataset/City/CityWay_part2.mp4'
+
 
 class YoloV5OnnxSubscriber(Node):
+    """Read frames from a fixed video file and publish detections."""
+
     def __init__(self):
         super().__init__('yolov5_onnx_subscriber')
         self.bridge = CvBridge()
@@ -37,20 +71,30 @@ class YoloV5OnnxSubscriber(Node):
         self.input_name = self.session.get_inputs()[0].name
         self.get_logger().info(f"模型输入名称: {self.input_name}")
 
-        # 订阅图像
-        self.subscription = self.create_subscription(
-            Image,
-            '/image_raw',
-            self.listener_callback,
-            10
-        )
+        # 视频读取与发布器
+        self.cap = cv2.VideoCapture(VIDEO_PATH)
+        if not self.cap.isOpened():
+            self.get_logger().fatal(f'无法打开视频文件: {VIDEO_PATH}')
+            sys.exit(1)
 
-        # 创建检测结果发布器
-        self.det_pub = self.create_publisher(
-            Detection2DArray,
-            '/detections',
-            10
+        # 声明输出视频路径参数并初始化写入器
+        self.declare_parameter(
+            'output_video_path', '/mnt/d/Dataset/Output/detect_output.mp4'
         )
+        output_path = (
+            self.get_parameter('output_video_path').get_parameter_value().string_value
+        )
+        fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        self.image_pub = self.create_publisher(Image, '/image_raw', 10)
+        self.det_pub = self.create_publisher(Detection2DArray, '/detections', 10)
+
+        # 定时器循环读取视频帧
+        self.timer = self.create_timer(1 / 30.0, self.timer_callback)
 
     def preprocess(self, image):
         img_resized = cv2.resize(image, (640, 640))
@@ -95,12 +139,23 @@ class YoloV5OnnxSubscriber(Node):
     def draw_detections(self, image, boxes, scores, class_ids):
         for (box, score, cls_id) in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box
-            label = CLASS_NAMES[cls_id] if 0 <= cls_id < len(CLASS_NAMES) else str(cls_id)
-            color = (0, 0, 255) if label == 'no_mask' else (0, 255, 0)
+            label = (
+                COCO_CLASS_NAMES[cls_id]
+                if 0 <= cls_id < len(COCO_CLASS_NAMES)
+                else str(cls_id)
+            )
+            color = CLASS_COLORS.get(label, (255, 255, 255))
             cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
             y_text = max(0, y1 - 5)
-            cv2.putText(image, f"{label}:{score:.2f}", (x1, y_text),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(
+                image,
+                f"{label}:{score:.2f}",
+                (x1, y_text),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2,
+            )
         return image
 
     def publish_detections(self, boxes, scores, class_ids, img_shape):
@@ -122,7 +177,11 @@ class YoloV5OnnxSubscriber(Node):
             detection.bbox.size_y = float(y2 - y1)
 
             hyp = ObjectHypothesis()
-            label = CLASS_NAMES[cls_id] if 0 <= cls_id < len(CLASS_NAMES) else str(cls_id)
+            label = (
+                COCO_CLASS_NAMES[cls_id]
+                if 0 <= cls_id < len(COCO_CLASS_NAMES)
+                else str(cls_id)
+            )
             hyp.class_id = label
             hyp.score = float(score)
 
@@ -141,25 +200,30 @@ class YoloV5OnnxSubscriber(Node):
 
         self.det_pub.publish(msg)
 
-    def listener_callback(self, msg):
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-            orig_shape = cv_image.shape[:2]
+    def timer_callback(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            self.get_logger().info('视频读取完毕')
+            if hasattr(self, 'writer'):
+                self.writer.release()
+            self.destroy_node()
+            rclpy.shutdown()
+            return
 
-            img_input, img_resized = self.preprocess(cv_image)
+        orig_shape = frame.shape[:2]
+        img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+        self.image_pub.publish(img_msg)
+
+        try:
+            img_input, img_resized = self.preprocess(frame)
             outputs = self.session.run(None, {self.input_name: img_input})
             boxes, scores, class_ids = self.postprocess(outputs, img_resized.shape, orig_shape)
-
-            # 可视化
-            # result_img = self.draw_detections(cv_image.copy(), boxes, scores, class_ids)
-            # cv2.imshow("YOLOv5 ONNX Detection", result_img)
-            # cv2.waitKey(1)
-
-            # 发布检测消息
+            draw_img = self.draw_detections(frame.copy(), boxes, scores, class_ids)
+            if hasattr(self, 'writer'):
+                self.writer.write(draw_img)
             self.publish_detections(boxes, scores, class_ids, orig_shape)
-
         except Exception as e:
-            self.get_logger().error(f'处理图像时出错: {e}')
+            self.get_logger().error(f'处理视频帧时出错: {e}')
 
 def main(args=None):
     rclpy.init(args=args)
@@ -170,8 +234,13 @@ def main(args=None):
         pass
     finally:
         cv2.destroyAllWindows()
-        node.destroy_node()
-        rclpy.shutdown()
+        if hasattr(node, 'cap'):
+            node.cap.release()
+        if hasattr(node, 'writer'):
+            node.writer.release()
+        if rclpy.ok():
+            node.destroy_node()
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

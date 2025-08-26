@@ -12,12 +12,35 @@ from cv_bridge import CvBridge
 import cv2
 from deep_sort_realtime.deepsort_tracker import DeepSort
 
+
+# 不同交通参与者的颜色映射（BGR）
+CLASS_COLORS = {
+    'person': (0, 255, 0),
+    'bicycle': (255, 0, 0),
+    'car': (0, 0, 255),
+    'motorcycle': (255, 0, 255),
+    'bus': (0, 255, 255),
+    'truck': (255, 255, 0),
+}
+
 class ObjectTrackerNode(Node):
     def __init__(self):
         super().__init__('object_tracker')
         self.tracker = DeepSort(max_age=30, n_init=3, nn_budget=100)
         self.bridge = CvBridge()
         self.last_image = None
+
+        self.declare_parameter(
+            'output_video_path', '/mnt/d/Dataset/Output/tracked_output.mp4'
+        )
+        self.declare_parameter('output_fps', 30.0)
+        self.output_path = (
+            self.get_parameter('output_video_path').get_parameter_value().string_value
+        )
+        self.output_fps = (
+            self.get_parameter('output_fps').get_parameter_value().double_value
+        )
+        self.writer = None
 
         self.subscription = self.create_subscription(
             Detection2DArray,
@@ -135,17 +158,34 @@ class ObjectTrackerNode(Node):
             tracked_msg.detections.append(bbox)
 
             if draw_img is not None:
-                cv2.rectangle(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+                color = CLASS_COLORS.get(best_label, (255, 255, 255))
+                cv2.rectangle(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
                 text = f"ID:{int(track_id)} {best_label}:{best_score:.2f}"
-                cv2.putText(draw_img, text, (int(x1), max(0, int(y1) - 5)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+                cv2.putText(
+                    draw_img,
+                    text,
+                    (int(x1), max(0, int(y1) - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    color,
+                    2,
+                )
 
         self.publisher.publish(tracked_msg)
         self.get_logger().info(f'发布跟踪目标数量: {len(tracked_msg.detections)}')
-
         if draw_img is not None:
-            cv2.imshow('Tracked Objects', draw_img)
-            cv2.waitKey(1)
+            if self.writer is None:
+                h, w = draw_img.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                self.writer = cv2.VideoWriter(
+                    self.output_path, fourcc, self.output_fps, (w, h)
+                )
+            self.writer.write(draw_img)
+
+    def destroy_node(self):
+        if self.writer is not None:
+            self.writer.release()
+        super().destroy_node()
 
 def main(args=None):
     rclpy.init(args=args)
