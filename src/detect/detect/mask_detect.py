@@ -16,8 +16,31 @@ from vision_msgs.msg import (
     Pose2D,
 )
 
+# COCO 数据集的类别名称，用于将检测到的 ID 转换为可读标签
+COCO_CLASS_NAMES = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
+    'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
+    'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
+    'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
+    'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
+    'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',
+    'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
+    'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
+    'toothbrush'
+]
 
-CLASS_NAMES = ['no_mask', 'mask']  # 0->no_mask, 1->mask（按你的训练集顺序来）
+# 不同交通参与者对应的颜色（BGR）
+CLASS_COLORS = {
+    'person': (0, 255, 0),
+    'bicycle': (255, 0, 0),
+    'car': (0, 0, 255),
+    'motorcycle': (255, 0, 255),
+    'bus': (0, 255, 255),
+    'truck': (255, 255, 0),
+}
 
 VIDEO_PATH = '/mnt/d/Dataset/City/CityWay_part2.mp4'
 
@@ -116,12 +139,23 @@ class YoloV5OnnxSubscriber(Node):
     def draw_detections(self, image, boxes, scores, class_ids):
         for (box, score, cls_id) in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box
-            label = CLASS_NAMES[cls_id] if 0 <= cls_id < len(CLASS_NAMES) else str(cls_id)
-            color = (0, 0, 255) if label == 'no_mask' else (0, 255, 0)
+            label = (
+                COCO_CLASS_NAMES[cls_id]
+                if 0 <= cls_id < len(COCO_CLASS_NAMES)
+                else str(cls_id)
+            )
+            color = CLASS_COLORS.get(label, (255, 255, 255))
             cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
             y_text = max(0, y1 - 5)
-            cv2.putText(image, f"{label}:{score:.2f}", (x1, y_text),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(
+                image,
+                f"{label}:{score:.2f}",
+                (x1, y_text),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2,
+            )
         return image
 
     def publish_detections(self, boxes, scores, class_ids, img_shape):
@@ -143,7 +177,11 @@ class YoloV5OnnxSubscriber(Node):
             detection.bbox.size_y = float(y2 - y1)
 
             hyp = ObjectHypothesis()
-            label = CLASS_NAMES[cls_id] if 0 <= cls_id < len(CLASS_NAMES) else str(cls_id)
+            label = (
+                COCO_CLASS_NAMES[cls_id]
+                if 0 <= cls_id < len(COCO_CLASS_NAMES)
+                else str(cls_id)
+            )
             hyp.class_id = label
             hyp.score = float(score)
 

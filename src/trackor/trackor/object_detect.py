@@ -12,6 +12,17 @@ from cv_bridge import CvBridge
 import cv2
 from deep_sort_realtime.deepsort_tracker import DeepSort
 
+
+# 不同交通参与者的颜色映射（BGR）
+CLASS_COLORS = {
+    'person': (0, 255, 0),
+    'bicycle': (255, 0, 0),
+    'car': (0, 0, 255),
+    'motorcycle': (255, 0, 255),
+    'bus': (0, 255, 255),
+    'truck': (255, 255, 0),
+}
+
 class ObjectTrackerNode(Node):
     def __init__(self):
         super().__init__('object_tracker')
@@ -147,10 +158,18 @@ class ObjectTrackerNode(Node):
             tracked_msg.detections.append(bbox)
 
             if draw_img is not None:
-                cv2.rectangle(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+                color = CLASS_COLORS.get(best_label, (255, 255, 255))
+                cv2.rectangle(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
                 text = f"ID:{int(track_id)} {best_label}:{best_score:.2f}"
-                cv2.putText(draw_img, text, (int(x1), max(0, int(y1) - 5)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+                cv2.putText(
+                    draw_img,
+                    text,
+                    (int(x1), max(0, int(y1) - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    color,
+                    2,
+                )
 
         self.publisher.publish(tracked_msg)
         self.get_logger().info(f'发布跟踪目标数量: {len(tracked_msg.detections)}')
