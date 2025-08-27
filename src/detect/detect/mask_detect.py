@@ -76,10 +76,29 @@ class YoloV5OnnxSubscriber(Node):
         self.input_name = self.session.get_inputs()[0].name
         self.get_logger().info(f"模型输入名称: {self.input_name}")
 
-        # 视频读取与发布器
-        self.cap = cv2.VideoCapture(VIDEO_PATH)
-        if not self.cap.isOpened():
-            self.get_logger().fatal(f'无法打开视频文件: {VIDEO_PATH}')
+        def open_video(path):
+            """Open video with multiple backends."""
+            backends = [
+                (cv2.CAP_FFMPEG, 'CAP_FFMPEG'),
+                (cv2.CAP_GSTREAMER, 'CAP_GSTREAMER'),
+                (cv2.CAP_ANY, 'CAP_ANY'),
+            ]
+            for backend, name in backends:
+                cap = cv2.VideoCapture(path, backend)
+                if cap.isOpened():
+                    self.get_logger().info(f"使用后端 {name} 打开视频: {path}")
+                    return cap
+                cap.release()
+            raise RuntimeError(f'无法打开视频文件: {path}')
+
+        self.declare_parameter('video_path', VIDEO_PATH)
+        video_path = (
+            self.get_parameter('video_path').get_parameter_value().string_value
+        )
+        try:
+            self.cap = open_video(video_path)
+        except Exception as exc:
+            self.get_logger().fatal(str(exc))
             sys.exit(1)
 
         # 声明输出视频路径参数并初始化写入器
