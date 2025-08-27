@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+import sys
 
 package_name = 'detect'
 
@@ -16,15 +17,14 @@ setup(
     zip_safe=True,
     maintainer='wanglonglong',
     maintainer_email='wanglonglong02@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='YOLOv5-based object detection node',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'mask_detect = detect.mask_detect:main'
         ],
     },
-        # 新增：强制指定可执行文件的Python解释器路径
     options={
         'build_scripts': {
             'executable': '/home/wanglonglong/ros2_env/bin/python3',  # 你的虚拟环境Python路径

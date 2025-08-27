@@ -15,6 +15,8 @@
 #include "v4l2_camera/parameters.hpp"
 
 #include <string>
+#include <array>
+#include <algorithm>
 
 #include "v4l2_camera/fourcc.hpp"
 
@@ -173,11 +175,30 @@ void Parameters::declareControlParameters(V4l2CameraDevice const & device)
 void Parameters::setParameterChangedCallback(std::function<void(rclcpp::Parameter)> callback)
 {
   // Callback for inspecting and validating changes
-  // TODO(sgvandijk): validate parameters where possible, such as output format
   on_set_parameter_callback_handle_ = parameters_interface_->add_on_set_parameters_callback(
-    [](std::vector<rclcpp::Parameter> const & /*parameters*/) {
+    [this](std::vector<rclcpp::Parameter> const & parameters) {
       auto result = rcl_interfaces::msg::SetParametersResult{};
       result.successful = true;
+
+      for (auto const & param : parameters) {
+        if (param.get_name() == "output_encoding") {
+          auto const & value = param.as_string();
+          std::array<std::string, 3> allowed = {"rgb8", "bgr8", "mono8"};
+          if (std::find(allowed.begin(), allowed.end(), value) == allowed.end()) {
+            result.successful = false;
+            result.reason = "invalid output_encoding";
+            break;
+          }
+        } else if (param.get_name() == "image_size") {
+          auto const & arr = param.as_integer_array();
+          if (arr.size() != 2 || arr[0] <= 0 || arr[1] <= 0) {
+            result.successful = false;
+            result.reason = "image_size must be [width,height] > 0";
+            break;
+          }
+        }
+      }
+
       return result;
     });
 

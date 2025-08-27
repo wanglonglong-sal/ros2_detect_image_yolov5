@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+import sys
 
 package_name = 'trackor'
 
@@ -15,8 +16,8 @@ setup(
     zip_safe=True,
     maintainer='wanglonglong',
     maintainer_email='wanglonglong02@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Tracking detected objects using Deep SORT',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
