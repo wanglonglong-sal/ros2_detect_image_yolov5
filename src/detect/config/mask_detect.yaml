@@ -1,0 +1,2 @@
+input_video_path: "/mnt/d/Dataset/City/CityWay_part2.mp4"
+output_video_path: "/mnt/d/Dataset/Output/detect_output.mp4"

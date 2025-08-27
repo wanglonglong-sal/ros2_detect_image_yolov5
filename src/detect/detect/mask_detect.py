@@ -7,6 +7,8 @@ import numpy as np
 import cv2
 import os
 import sys
+import yaml
+from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseWithCovariance
 from vision_msgs.msg import (
     Detection2D,
@@ -41,8 +43,6 @@ CLASS_COLORS = {
     'bus': (0, 255, 255),
     'truck': (255, 255, 0),
 }
-
-VIDEO_PATH = '/mnt/d/Dataset/City/CityWay_part2.mp4'
 
 
 class YoloV5OnnxSubscriber(Node):
@@ -91,28 +91,44 @@ class YoloV5OnnxSubscriber(Node):
                 cap.release()
             raise RuntimeError(f'无法打开视频文件: {path}')
 
-        self.declare_parameter('video_path', VIDEO_PATH)
-        video_path = (
-            self.get_parameter('video_path').get_parameter_value().string_value
+        # 读取配置文件
+        default_cfg_path = os.path.join(
+            get_package_share_directory('detect'),
+            'config',
+            'mask_detect.yaml',
         )
+        self.declare_parameter('config_path', default_cfg_path)
+        cfg_path = (
+            self.get_parameter('config_path').get_parameter_value().string_value
+        )
+        try:
+            with open(cfg_path, 'r', encoding='utf-8') as f:
+                cfg = yaml.safe_load(f) or {}
+        except Exception as exc:
+            self.get_logger().fatal(f"加载配置文件失败: {cfg_path} ({exc})")
+            sys.exit(1)
+
+        video_path = cfg.get('input_video_path')
+        if not video_path:
+            self.get_logger().fatal('配置文件缺少 input_video_path')
+            sys.exit(1)
         try:
             self.cap = open_video(video_path)
         except Exception as exc:
             self.get_logger().fatal(str(exc))
             sys.exit(1)
 
-        # 声明输出视频路径参数并初始化写入器
-        self.declare_parameter(
-            'output_video_path', '/mnt/d/Dataset/Output/detect_output.mp4'
-        )
-        output_path = (
-            self.get_parameter('output_video_path').get_parameter_value().string_value
-        )
+        output_path = cfg.get('output_video_path')
+        if not output_path:
+            self.get_logger().fatal('配置文件缺少 output_video_path')
+            sys.exit(1)
         fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        if not self.writer.isOpened():
+            self.get_logger().error(f"无法创建输出视频: {output_path}")
 
         self.image_pub = self.create_publisher(Image, '/image_raw', 10)
         self.det_pub = self.create_publisher(Detection2DArray, '/detections', 10)
