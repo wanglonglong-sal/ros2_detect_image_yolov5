@@ -12,14 +12,14 @@ def generate_launch_description():
 
     yolo_node = Node(
         package='detect',
-        executable='mask_detect',
-        name='mask_detect',
+        executable='yolov5_video_detector',
+        name='yolov5_video_detector',
         output='screen',
     )
 
     tracker_node = Node(
         package='trackor',
-        executable='object_detect',
+        executable='object_tracker',
         name='object_tracker',
         output='screen',
         parameters=[{'output_video_path': LaunchConfiguration('output_video_path')}],
