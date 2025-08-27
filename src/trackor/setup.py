@@ -21,7 +21,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'object_detect = trackor.object_detect:main'
+            'object_tracker = trackor.object_tracker:main'
         ],
     },
     # 新增：强制指定可执行文件的Python解释器路径

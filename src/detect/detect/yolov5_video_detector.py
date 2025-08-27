@@ -71,7 +71,7 @@ class YoloV5OnnxSubscriber(Node):
         default_cfg_path = os.path.join(
             get_package_share_directory('detect'),
             'config',
-            'mask_detect.yaml',
+            'yolov5_video_detector.yaml',
         )
         self.declare_parameter('config_path', default_cfg_path)
         cfg_path = (
