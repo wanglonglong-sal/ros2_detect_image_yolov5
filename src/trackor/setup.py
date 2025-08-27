@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+import sys
 
 package_name = 'trackor'
 
@@ -15,8 +16,8 @@ setup(
     zip_safe=True,
     maintainer='wanglonglong',
     maintainer_email='wanglonglong02@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Tracking detected objects using Deep SORT',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
@@ -26,7 +27,7 @@ setup(
     # 新增：强制指定可执行文件的Python解释器路径
     options={
         'build_scripts': {
-            'executable': '/home/wanglonglong/ros2_env/bin/python3',  # 你的虚拟环境Python路径
+            'executable': sys.executable,
         },
     },
     

@@ -28,13 +28,21 @@ run python node: ros2 run detect mask_detect
 ```yaml
 input_video_path: "/mnt/d/Dataset/City/CityWay_part2.mp4"
 output_video_path: "/mnt/d/Dataset/Output/detect_output.mp4"
+model_path: "/mnt/d/Dataset/Models/best.onnx"
+ignore_ratio: 0.25
 ```
+
+其中 `model_path` 指定 ONNX 模型文件路径，`ignore_ratio` 用于忽略图像底部一定比例的检测结果。
 
 运行时可通过 `config_path` 参数指定其他配置文件：
 
 ```bash
 ros2 run detect mask_detect --ros-args -p config_path:=/path/to/custom.yaml
 ```
+
+## License
+
+This project is licensed under the MIT License.
 create new package: 
 -cd src
 -ros2 pkg create trackor --build-type ament_python --dependencies rclpy --node-name object_detect 

@@ -52,30 +52,6 @@ class YoloV5OnnxSubscriber(Node):
         super().__init__('yolov5_onnx_subscriber')
         self.bridge = CvBridge()
 
-        # 模型路径
-        model_path = os.path.expanduser('~/Learn_ROS2/03.my_robot/src/detect/model/best.onnx')
-        model_path = os.path.abspath(model_path)
-
-        if not os.path.exists(model_path):
-            self.get_logger().fatal(f"模型文件不存在: {model_path}")
-            sys.exit(1)
-
-        # 加载 ONNX 模型
-        try:
-            self.session = ort.InferenceSession(
-                model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
-            )
-            self.get_logger().info(f'ONNX 模型加载成功: {model_path}')
-            self.get_logger().info(
-                f"ONNX Runtime providers: {self.session.get_providers()}"
-            )
-        except Exception as e:
-            self.get_logger().fatal(f'ONNX 模型加载失败: {str(e)}')
-            sys.exit(1)
-
-        self.input_name = self.session.get_inputs()[0].name
-        self.get_logger().info(f"模型输入名称: {self.input_name}")
-
         def open_video(path):
             """Open video with multiple backends."""
             backends = [
@@ -107,6 +83,33 @@ class YoloV5OnnxSubscriber(Node):
         except Exception as exc:
             self.get_logger().fatal(f"加载配置文件失败: {cfg_path} ({exc})")
             sys.exit(1)
+
+        # 从配置或参数获取模型路径和过滤阈值
+        self.declare_parameter('model_path', cfg.get('model_path', ''))
+        self.declare_parameter('ignore_ratio', cfg.get('ignore_ratio', 0.25))
+        model_path = self.get_parameter('model_path').get_parameter_value().string_value
+        self.ignore_ratio = self.get_parameter('ignore_ratio').value
+
+        model_path = os.path.expanduser(model_path)
+        model_path = os.path.abspath(model_path)
+        if not os.path.exists(model_path):
+            self.get_logger().fatal(f"模型文件不存在: {model_path}")
+            sys.exit(1)
+
+        try:
+            self.session = ort.InferenceSession(
+                model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+            )
+            self.get_logger().info(f'ONNX 模型加载成功: {model_path}')
+            self.get_logger().info(
+                f"ONNX Runtime providers: {self.session.get_providers()}"
+            )
+        except Exception as e:
+            self.get_logger().fatal(f'ONNX 模型加载失败: {str(e)}')
+            sys.exit(1)
+
+        self.input_name = self.session.get_inputs()[0].name
+        self.get_logger().info(f"模型输入名称: {self.input_name}")
 
         video_path = cfg.get('input_video_path')
         if not video_path:
@@ -261,10 +264,9 @@ class YoloV5OnnxSubscriber(Node):
 
             # 过滤图像下部区域的检测结果
             h = frame.shape[0]
-            ignore_ratio = 0.25
             filtered = []
             for box, score, cls in zip(boxes, scores, class_ids):
-                if box[1] > h * (1 - ignore_ratio):
+                if box[1] > h * (1 - self.ignore_ratio):
                     continue
                 filtered.append((box, score, cls))
             boxes, scores, class_ids = (

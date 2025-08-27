@@ -1,2 +1,4 @@
 input_video_path: "/mnt/d/Dataset/City/CityWay_part2.mp4"
 output_video_path: "/mnt/d/Dataset/Output/detect_output.mp4"
+model_path: "/mnt/d/Dataset/Models/best.onnx"
+ignore_ratio: 0.25
