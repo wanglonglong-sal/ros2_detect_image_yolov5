@@ -27,7 +27,7 @@ setup(
     },
     options={
         'build_scripts': {
-            'executable': sys.executable,
+            'executable': '/home/wanglonglong/ros2_env/bin/python3',  # 你的虚拟环境Python路径
         },
     },
 )

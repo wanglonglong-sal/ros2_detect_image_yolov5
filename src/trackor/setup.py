@@ -27,7 +27,7 @@ setup(
     # 新增：强制指定可执行文件的Python解释器路径
     options={
         'build_scripts': {
-            'executable': sys.executable,
+            'executable': '/home/wanglonglong/ros2_env/bin/python3',  # 你的虚拟环境Python路径
         },
     },
     
