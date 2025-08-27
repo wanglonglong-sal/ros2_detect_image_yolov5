@@ -20,6 +20,21 @@ run launch: ros2 launch bringup launch.py
 -launch.py will activate the node of v4l2 and camera_subscriber(this node has no further usage)
 enter python virtual environment: source ~/ros2_env/bin/activate
 run python node: ros2 run detect mask_detect
+
+### 配置文件
+
+`mask_detect` 节点通过 YAML 文件读取输入视频和输出视频路径。默认配置文件位于 `src/detect/config/mask_detect.yaml`，内容示例：
+
+```yaml
+input_video_path: "/mnt/d/Dataset/City/CityWay_part2.mp4"
+output_video_path: "/mnt/d/Dataset/Output/detect_output.mp4"
+```
+
+运行时可通过 `config_path` 参数指定其他配置文件：
+
+```bash
+ros2 run detect mask_detect --ros-args -p config_path:=/path/to/custom.yaml
+```
 create new package: 
 -cd src
 -ros2 pkg create trackor --build-type ament_python --dependencies rclpy --node-name object_detect 
