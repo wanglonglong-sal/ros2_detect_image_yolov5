@@ -41,6 +41,12 @@ class ObjectTrackerNode(Node):
             self.get_parameter('output_fps').get_parameter_value().double_value
         )
         self.writer = None
+        self.declare_parameter('enable_output_video', True)
+        self.enable_output_video = (
+            self.get_parameter('enable_output_video').get_parameter_value().bool_value
+            if hasattr(self.get_parameter('enable_output_video'), 'get_parameter_value')
+            else True
+        )
 
         self.subscription = self.create_subscription(
             Detection2DArray,
@@ -173,14 +179,18 @@ class ObjectTrackerNode(Node):
 
         self.publisher.publish(tracked_msg)
         self.get_logger().info(f'发布跟踪目标数量: {len(tracked_msg.detections)}')
-        if draw_img is not None:
+        if self.enable_output_video and draw_img is not None:
             if self.writer is None:
                 h, w = draw_img.shape[:2]
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 self.writer = cv2.VideoWriter(
                     self.output_path, fourcc, self.output_fps, (w, h)
                 )
-            self.writer.write(draw_img)
+                if not self.writer.isOpened():
+                    self.get_logger().error(f"Failed to open tracker output video: {self.output_path}")
+                    self.writer = None
+            if self.writer is not None:
+                self.writer.write(draw_img)
 
     def destroy_node(self):
         if self.writer is not None:

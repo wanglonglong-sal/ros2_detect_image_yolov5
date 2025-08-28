@@ -1,0 +1,15 @@
+action_recognizer:
+  ros__parameters:
+    backend: "stub"            # options: stub, slowfast (future)
+    clip_len: 16               # frames per clip
+    sample_rate: 2             # stride when sampling frames for model
+    inference_stride: 8        # run inference every N buffered frames per track
+    min_box_size: 8            # px; ignore tiny boxes
+    allowed_actors: ["person", "bicycle", "motorcycle", "car", "bus", "truck"]
+    labels_path: ""            # reserved for slowfast/AVA labels
+    model_path: ""             # reserved for slowfast/AVA model checkpoint
+    device: "cpu"              # reserved for torch backend
+    output_topic: "/actions"
+    output_video_path: "/mnt/d/Dataset/Output/actions_output.mp4"
+    output_fps: 30.0
+    enable_output_video: true
