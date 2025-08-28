@@ -11,6 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/config', ['config/object_tracker.yaml']),
     ],
     install_requires=['setuptools', 'deep-sort-realtime'],
     zip_safe=True,

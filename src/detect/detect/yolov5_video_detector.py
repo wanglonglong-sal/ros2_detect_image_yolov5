@@ -89,6 +89,9 @@ class YoloV5OnnxSubscriber(Node):
         self.declare_parameter('ignore_ratio', cfg.get('ignore_ratio', 0.25))
         model_path = self.get_parameter('model_path').get_parameter_value().string_value
         self.ignore_ratio = self.get_parameter('ignore_ratio').value
+        # 控制是否输出检测视频
+        self.declare_parameter('enable_output_video', cfg.get('enable_output_video', True))
+        self.enable_output_video = self.get_parameter('enable_output_video').value
 
         model_path = os.path.expanduser(model_path)
         model_path = os.path.abspath(model_path)
@@ -121,17 +124,19 @@ class YoloV5OnnxSubscriber(Node):
             self.get_logger().fatal(str(exc))
             sys.exit(1)
 
-        output_path = cfg.get('output_video_path')
-        if not output_path:
-            self.get_logger().fatal('配置文件缺少 output_video_path')
-            sys.exit(1)
-        fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
-        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        if not self.writer.isOpened():
-            self.get_logger().error(f"无法创建输出视频: {output_path}")
+        self.writer = None
+        if self.enable_output_video:
+            output_path = cfg.get('output_video_path')
+            if not output_path:
+                self.get_logger().fatal('配置文件缺少 output_video_path')
+                sys.exit(1)
+            fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
+            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+            if not self.writer.isOpened():
+                self.get_logger().error(f"无法创建输出视频: {output_path}")
 
         self.image_pub = self.create_publisher(Image, '/image_raw', 10)
         self.det_pub = self.create_publisher(Detection2DArray, '/detections', 10)
@@ -247,7 +252,7 @@ class YoloV5OnnxSubscriber(Node):
         ret, frame = self.cap.read()
         if not ret:
             self.get_logger().info('视频读取完毕')
-            if hasattr(self, 'writer'):
+            if getattr(self, 'writer', None) is not None:
                 self.writer.release()
             self.destroy_node()
             rclpy.shutdown()
@@ -274,7 +279,7 @@ class YoloV5OnnxSubscriber(Node):
             )
 
             draw_img = self.draw_detections(frame.copy(), boxes, scores, class_ids)
-            if hasattr(self, 'writer'):
+            if getattr(self, 'writer', None) is not None and self.enable_output_video:
                 self.writer.write(draw_img)
             self.publish_detections(boxes, scores, class_ids, orig_shape)
         except Exception as e:
@@ -291,7 +296,7 @@ def main(args=None):
         cv2.destroyAllWindows()
         if hasattr(node, 'cap'):
             node.cap.release()
-        if hasattr(node, 'writer'):
+        if getattr(node, 'writer', None) is not None:
             node.writer.release()
         if rclpy.ok():
             node.destroy_node()
