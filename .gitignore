@@ -1,4 +1,6 @@
 # 忽略 ROS2 编译生成目录
 build/
 install/
+log/src/action_recognizer/models/*.pt
 log/
+*/*.log
