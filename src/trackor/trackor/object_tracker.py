@@ -29,6 +29,8 @@ class ObjectTrackerNode(Node):
         self.tracker = DeepSort(max_age=30, n_init=3, nn_budget=100)
         self.bridge = CvBridge()
         self.last_image = None
+        self._prev_img_time_sec = None
+        self._estimated_fps = 0.0
 
         self.declare_parameter(
             'output_video_path', '/mnt/d/Dataset/Output/tracked_output.mp4'
@@ -70,7 +72,22 @@ class ObjectTrackerNode(Node):
         self.get_logger().info('ObjectTrackerNode 已启动，等待检测结果...')
 
     def image_callback(self, msg: Image):
+        # Update last image and estimate FPS from image timestamps
         self.last_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        try:
+            stamp = msg.header.stamp
+            t = float(stamp.sec) + float(stamp.nanosec) * 1e-9
+            if self._prev_img_time_sec is not None:
+                dt = max(1e-6, t - self._prev_img_time_sec)
+                inst_fps = 1.0 / dt
+                if self._estimated_fps <= 0:
+                    self._estimated_fps = inst_fps
+                else:
+                    # simple EMA to smooth FPS estimate
+                    self._estimated_fps = 0.9 * self._estimated_fps + 0.1 * inst_fps
+            self._prev_img_time_sec = t
+        except Exception:
+            pass
 
     def detection_callback(self, msg: Detection2DArray):
         dets = []
@@ -91,7 +108,8 @@ class ObjectTrackerNode(Node):
             dets.append((bbox, score, label))
             det_info.append(([x1, y1, x2, y2], label, score))
 
-        if len(dets) == 0 or self.last_image is None:
+        # Require an image to proceed; allow empty detections to still publish/write
+        if self.last_image is None:
             return
 
         tracks = self.tracker.update_tracks(dets, frame=self.last_image)
@@ -183,9 +201,10 @@ class ObjectTrackerNode(Node):
             if self.writer is None:
                 h, w = draw_img.shape[:2]
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                self.writer = cv2.VideoWriter(
-                    self.output_path, fourcc, self.output_fps, (w, h)
+                fps = float(self.output_fps) if float(self.output_fps) > 0 else (
+                    float(self._estimated_fps) if self._estimated_fps > 0 else 30.0
                 )
+                self.writer = cv2.VideoWriter(self.output_path, fourcc, fps, (w, h))
                 if not self.writer.isOpened():
                     self.get_logger().error(f"Failed to open tracker output video: {self.output_path}")
                     self.writer = None

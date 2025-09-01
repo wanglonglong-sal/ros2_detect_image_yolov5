@@ -1,15 +1,21 @@
 action_recognizer:
   ros__parameters:
-    backend: "stub"            # options: stub, slowfast (future)
-    clip_len: 16               # frames per clip
-    sample_rate: 2             # stride when sampling frames for model
-    inference_stride: 8        # run inference every N buffered frames per track
-    min_box_size: 8            # px; ignore tiny boxes
+    backend: "slowfast_ava"      # options: stub, slowfast, slowfast_ava
+    # AVA-style full-frame settings
+    clip_len: 64                 # frames per clip (matches AVA cfg)
+    sample_rate: 2               # temporal sampling rate
+    alpha: 4                     # slow pathway temporal stride (T/alpha)
+    input_size: 256              # model input spatial size (TEST_CROP_SIZE)
+    multi_label: true            # AVA uses multi-label classification (sigmoid)
+    # Runtime
+    inference_stride: 8          # run inference every N frames
+    min_box_size: 8              # px; ignore tiny boxes
     allowed_actors: ["person", "bicycle", "motorcycle", "car", "bus", "truck"]
-    labels_path: ""            # reserved for slowfast/AVA labels
-    model_path: ""             # reserved for slowfast/AVA model checkpoint
-    device: "cpu"              # reserved for torch backend
     output_topic: "/actions"
     output_video_path: "/mnt/d/Dataset/Output/actions_output.mp4"
     output_fps: 30.0
     enable_output_video: true
+    # Model & labels
+    model_path: "/home/wanglonglong/Learn_ROS2/03.my_robot/src/action_recognizer/models/slowfast_ava_r101_64x2_ts.pt"
+    labels_path: "/home/wanglonglong/Learn_ROS2/03.my_robot/src/action_recognizer/labels/ava_labels.txt"
+    device: "cpu"                # cpu or cuda[:id]

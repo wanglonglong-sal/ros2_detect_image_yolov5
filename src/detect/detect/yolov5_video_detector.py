@@ -1,14 +1,16 @@
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
-import onnxruntime as ort
-import numpy as np
-import cv2
 import os
 import sys
 import yaml
+import cv2
+import numpy as np
+import onnxruntime as ort
+
+import rclpy
+from rclpy.node import Node
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 from ament_index_python.packages import get_package_share_directory
+
 from geometry_msgs.msg import PoseWithCovariance
 from vision_msgs.msg import (
     Detection2D,
@@ -18,7 +20,8 @@ from vision_msgs.msg import (
     Pose2D,
 )
 
-# COCO 数据集的类别名称，用于将检测到的 ID 转换为可读标签
+
+# COCO class names used to map class IDs to human-readable labels
 COCO_CLASS_NAMES = [
     'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
     'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
@@ -34,7 +37,7 @@ COCO_CLASS_NAMES = [
     'toothbrush'
 ]
 
-# 不同交通参与者对应的颜色（BGR）
+# BGR colors for selected classes
 CLASS_COLORS = {
     'person': (0, 255, 0),
     'bicycle': (255, 0, 0),
@@ -46,14 +49,14 @@ CLASS_COLORS = {
 
 
 class YoloV5OnnxSubscriber(Node):
-    """Read frames from a fixed video file and publish detections."""
+    """Read frames from a video and publish detections and images."""
 
     def __init__(self):
         super().__init__('yolov5_onnx_subscriber')
         self.bridge = CvBridge()
 
-        def open_video(path):
-            """Open video with multiple backends."""
+        def open_video(path: str):
+            """Try multiple OpenCV backends to open a video file."""
             backends = [
                 (cv2.CAP_FFMPEG, 'CAP_FFMPEG'),
                 (cv2.CAP_GSTREAMER, 'CAP_GSTREAMER'),
@@ -62,61 +65,77 @@ class YoloV5OnnxSubscriber(Node):
             for backend, name in backends:
                 cap = cv2.VideoCapture(path, backend)
                 if cap.isOpened():
-                    self.get_logger().info(f"使用后端 {name} 打开视频: {path}")
+                    self.get_logger().info(f"Opened video with backend {name}: {path}")
                     return cap
                 cap.release()
-            raise RuntimeError(f'无法打开视频文件: {path}')
+            raise RuntimeError(f'Failed to open video file: {path}')
 
-        # 读取配置文件
+        # Load config file
         default_cfg_path = os.path.join(
             get_package_share_directory('detect'),
             'config',
             'yolov5_video_detector.yaml',
         )
         self.declare_parameter('config_path', default_cfg_path)
-        cfg_path = (
-            self.get_parameter('config_path').get_parameter_value().string_value
-        )
+        cfg_path = self.get_parameter('config_path').get_parameter_value().string_value
         try:
             with open(cfg_path, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f) or {}
         except Exception as exc:
-            self.get_logger().fatal(f"加载配置文件失败: {cfg_path} ({exc})")
+            self.get_logger().fatal(f"Failed to load config: {cfg_path} ({exc})")
             sys.exit(1)
 
-        # 从配置或参数获取模型路径和过滤阈值
+        # Parameters
         self.declare_parameter('model_path', cfg.get('model_path', ''))
         self.declare_parameter('ignore_ratio', cfg.get('ignore_ratio', 0.25))
-        model_path = self.get_parameter('model_path').get_parameter_value().string_value
-        self.ignore_ratio = self.get_parameter('ignore_ratio').value
-        # 控制是否输出检测视频
         self.declare_parameter('enable_output_video', cfg.get('enable_output_video', True))
-        self.enable_output_video = self.get_parameter('enable_output_video').value
+        self.declare_parameter('allowed_classes', cfg.get('allowed_classes', []))
 
-        model_path = os.path.expanduser(model_path)
-        model_path = os.path.abspath(model_path)
+        model_path = self.get_parameter('model_path').get_parameter_value().string_value
+        self.ignore_ratio = float(self.get_parameter('ignore_ratio').value)
+        self.enable_output_video = bool(self.get_parameter('enable_output_video').value)
+
+        # Allowed classes mapping (names -> COCO ids)
+        allowed_param = self.get_parameter('allowed_classes').value
+        if isinstance(allowed_param, (list, tuple)):
+            allowed_names = [str(x).strip().lower() for x in allowed_param]
+        elif isinstance(allowed_param, str):
+            allowed_names = [s.strip().lower() for s in allowed_param.split(',') if s.strip()]
+        else:
+            allowed_names = []
+        self.allowed_class_ids = set()
+        if allowed_names:
+            name_to_id = {n.lower(): i for i, n in enumerate(COCO_CLASS_NAMES)}
+            for n in allowed_names:
+                if n in name_to_id:
+                    self.allowed_class_ids.add(name_to_id[n])
+                else:
+                    self.get_logger().warn(f"Unrecognized class name '{n}', ignore this entry")
+            self.get_logger().info(f"Enabled class filter (IDs): {sorted(list(self.allowed_class_ids))}")
+
+        # Prepare model
+        model_path = os.path.abspath(os.path.expanduser(model_path))
         if not os.path.exists(model_path):
-            self.get_logger().fatal(f"模型文件不存在: {model_path}")
+            self.get_logger().fatal(f"Model file not found: {model_path}")
             sys.exit(1)
-
         try:
             self.session = ort.InferenceSession(
-                model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+                model_path,
+                providers=['CUDAExecutionProvider', 'CPUExecutionProvider'],
             )
-            self.get_logger().info(f'ONNX 模型加载成功: {model_path}')
-            self.get_logger().info(
-                f"ONNX Runtime providers: {self.session.get_providers()}"
-            )
+            self.get_logger().info(f'ONNX model loaded: {model_path}')
+            self.get_logger().info(f"ONNX Runtime providers: {self.session.get_providers()}")
         except Exception as e:
-            self.get_logger().fatal(f'ONNX 模型加载失败: {str(e)}')
+            self.get_logger().fatal(f'Failed to load ONNX model: {str(e)}')
             sys.exit(1)
 
         self.input_name = self.session.get_inputs()[0].name
-        self.get_logger().info(f"模型输入名称: {self.input_name}")
+        self.get_logger().info(f"Model input name: {self.input_name}")
 
+        # Open video
         video_path = cfg.get('input_video_path')
         if not video_path:
-            self.get_logger().fatal('配置文件缺少 input_video_path')
+            self.get_logger().fatal('Missing input_video_path in config')
             sys.exit(1)
         try:
             self.cap = open_video(video_path)
@@ -124,11 +143,12 @@ class YoloV5OnnxSubscriber(Node):
             self.get_logger().fatal(str(exc))
             sys.exit(1)
 
+        # Optional writer
         self.writer = None
         if self.enable_output_video:
             output_path = cfg.get('output_video_path')
             if not output_path:
-                self.get_logger().fatal('配置文件缺少 output_video_path')
+                self.get_logger().fatal('Missing output_video_path in config')
                 sys.exit(1)
             fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
             width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -136,12 +156,13 @@ class YoloV5OnnxSubscriber(Node):
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
             if not self.writer.isOpened():
-                self.get_logger().error(f"无法创建输出视频: {output_path}")
+                self.get_logger().error(f"Failed to create output video: {output_path}")
 
+        # Publishers
         self.image_pub = self.create_publisher(Image, '/image_raw', 10)
         self.det_pub = self.create_publisher(Detection2DArray, '/detections', 10)
 
-        # 定时器循环读取视频帧
+        # Timer
         self.timer = self.create_timer(1 / 30.0, self.timer_callback)
 
     def preprocess(self, image):
@@ -159,8 +180,8 @@ class YoloV5OnnxSubscriber(Node):
             if conf < conf_thres:
                 continue
             class_conf = pred[5:]
-            cls_id = np.argmax(class_conf)
-            score = conf * class_conf[cls_id]
+            cls_id = int(np.argmax(class_conf))
+            score = float(conf * class_conf[cls_id])
             if score < conf_thres:
                 continue
 
@@ -171,9 +192,10 @@ class YoloV5OnnxSubscriber(Node):
             y2 = (y + h / 2) * orig_shape[0] / img_shape[0]
 
             boxes.append([int(x1), int(y1), int(x2), int(y2)])
-            scores.append(float(score))
+            scores.append(score)
             class_ids.append(cls_id)
 
+        # NMS
         idxs = cv2.dnn.NMSBoxes(boxes, scores, conf_thres, iou_thres)
         final_boxes, final_scores, final_classes = [], [], []
         if len(idxs) > 0:
@@ -187,23 +209,11 @@ class YoloV5OnnxSubscriber(Node):
     def draw_detections(self, image, boxes, scores, class_ids):
         for (box, score, cls_id) in zip(boxes, scores, class_ids):
             x1, y1, x2, y2 = box
-            label = (
-                COCO_CLASS_NAMES[cls_id]
-                if 0 <= cls_id < len(COCO_CLASS_NAMES)
-                else str(cls_id)
-            )
+            label = COCO_CLASS_NAMES[cls_id] if 0 <= cls_id < len(COCO_CLASS_NAMES) else str(cls_id)
             color = CLASS_COLORS.get(label, (255, 255, 255))
             cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
             y_text = max(0, y1 - 5)
-            cv2.putText(
-                image,
-                f"{label}:{score:.2f}",
-                (x1, y_text),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                color,
-                2,
-            )
+            cv2.putText(image, f"{label}:{score:.2f}", (x1, y_text), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
         return image
 
     def publish_detections(self, boxes, scores, class_ids, img_shape):
@@ -225,11 +235,7 @@ class YoloV5OnnxSubscriber(Node):
             detection.bbox.size_y = float(y2 - y1)
 
             hyp = ObjectHypothesis()
-            label = (
-                COCO_CLASS_NAMES[cls_id]
-                if 0 <= cls_id < len(COCO_CLASS_NAMES)
-                else str(cls_id)
-            )
+            label = COCO_CLASS_NAMES[cls_id] if 0 <= cls_id < len(COCO_CLASS_NAMES) else str(cls_id)
             hyp.class_id = label
             hyp.score = float(score)
 
@@ -251,7 +257,7 @@ class YoloV5OnnxSubscriber(Node):
     def timer_callback(self):
         ret, frame = self.cap.read()
         if not ret:
-            self.get_logger().info('视频读取完毕')
+            self.get_logger().info('Video stream finished')
             if getattr(self, 'writer', None) is not None:
                 self.writer.release()
             self.destroy_node()
@@ -267,23 +273,24 @@ class YoloV5OnnxSubscriber(Node):
             outputs = self.session.run(None, {self.input_name: img_input})
             boxes, scores, class_ids = self.postprocess(outputs, img_resized.shape, orig_shape)
 
-            # 过滤图像下部区域的检测结果
+            # Filter detections in the bottom area and by allowed classes (if configured)
             h = frame.shape[0]
             filtered = []
             for box, score, cls in zip(boxes, scores, class_ids):
                 if box[1] > h * (1 - self.ignore_ratio):
                     continue
+                if self.allowed_class_ids and cls not in self.allowed_class_ids:
+                    continue
                 filtered.append((box, score, cls))
-            boxes, scores, class_ids = (
-                map(list, zip(*filtered)) if filtered else ([], [], [])
-            )
+            boxes, scores, class_ids = (map(list, zip(*filtered)) if filtered else ([], [], []))
 
             draw_img = self.draw_detections(frame.copy(), boxes, scores, class_ids)
             if getattr(self, 'writer', None) is not None and self.enable_output_video:
                 self.writer.write(draw_img)
             self.publish_detections(boxes, scores, class_ids, orig_shape)
         except Exception as e:
-            self.get_logger().error(f'处理视频帧时出错: {e}')
+            self.get_logger().error(f'Error processing frame: {e}')
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -302,5 +309,7 @@ def main(args=None):
             node.destroy_node()
             rclpy.shutdown()
 
+
 if __name__ == '__main__':
     main()
+

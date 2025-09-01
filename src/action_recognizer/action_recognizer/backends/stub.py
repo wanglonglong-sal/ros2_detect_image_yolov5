@@ -13,7 +13,7 @@ class StubBackend:
     - For vehicles: moving vs stopped
     """
 
-    def __init__(self, clip_len: int = 16, sample_rate: int = 2):
+    def __init__(self, clip_len: int = 16, sample_rate: int = 2, **kwargs):
         self.clip_len = clip_len
         self.sample_rate = sample_rate
 
@@ -51,4 +51,3 @@ class StubBackend:
                 return ("stopped", max(0.3, 1.0 - mean_motion / 3.0))
 
         return ("unknown", 0.1)
-
