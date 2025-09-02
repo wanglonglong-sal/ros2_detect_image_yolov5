@@ -15,6 +15,13 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
+# Install Python helper scripts as ROS 2 executables
+install(PROGRAMS
+  scripts/monitor_rates.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME monitor_rates
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

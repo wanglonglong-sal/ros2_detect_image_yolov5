@@ -43,16 +43,50 @@ class ObjectTrackerNode(Node):
         # Backend selection: 'deepsort' (default) or 'sort'
         self.declare_parameter('tracker_backend', 'deepsort')
         self.tracker_backend = self.get_parameter('tracker_backend').get_parameter_value().string_value
+        # Embedding/runtime tuning parameters (best-effort; some may be unsupported depending on library version)
+        self.declare_parameter('embedder_model_name', 'osnet_x0_25')
+        self.declare_parameter('embedder_w', 64)
+        self.declare_parameter('embedder_h', 128)
+        self.declare_parameter('embedder_gpu', True)
+        self.declare_parameter('embedder_half', True)
+        self.declare_parameter('embedder_batch_size', 16)
+        # Run heavy embedding every N ticks; on others, skip frame to rely on motion/IoU gating
+        self.declare_parameter('embed_every_n', 3)
+
+        embedder_model_name = self.get_parameter('embedder_model_name').get_parameter_value().string_value
+        embedder_w = int(self.get_parameter('embedder_w').get_parameter_value().integer_value)
+        embedder_h = int(self.get_parameter('embedder_h').get_parameter_value().integer_value)
+        embedder_gpu = bool(self.get_parameter('embedder_gpu').get_parameter_value().bool_value)
+        embedder_half = bool(self.get_parameter('embedder_half').get_parameter_value().bool_value)
+        try:
+            embedder_batch_size = int(self.get_parameter('embedder_batch_size').get_parameter_value().integer_value)
+        except Exception:
+            embedder_batch_size = 16
+        self.embed_every_n = max(1, int(self.get_parameter('embed_every_n').get_parameter_value().integer_value))
+
         if self.tracker_backend.lower() == 'sort':
             self.tracker = Sort(max_age=15, min_hits=3, iou_threshold=0.3)
             self.get_logger().info('Tracker backend: SORT (no re-id)')
         else:
             # DeepSort configuration (try GPU/half if supported)
             try:
-                self.tracker = DeepSort(max_age=30, n_init=3, nn_budget=50, embedder_gpu=True, half=True)
+                self.tracker = DeepSort(
+                    max_age=30,
+                    n_init=3,
+                    nn_budget=50,
+                    embedder_gpu=embedder_gpu,
+                    half=embedder_half,
+                    embedder_model_name=embedder_model_name,
+                    embedder_w=embedder_w,
+                    embedder_h=embedder_h,
+                    embedder_batch_size=embedder_batch_size,
+                )
             except TypeError:
+                # Fallback with minimal args
                 self.tracker = DeepSort(max_age=30, n_init=3, nn_budget=50)
-            self.get_logger().info('Tracker backend: DeepSort')
+            self.get_logger().info(
+                f'Tracker backend: DeepSort (model={embedder_model_name} {embedder_w}x{embedder_h} gpu={embedder_gpu} half={embedder_half} bs={embedder_batch_size} embed_every_n={self.embed_every_n})'
+            )
         self.bridge = CvBridge()
         self.last_image = None
         self._prev_img_time_sec = None
@@ -62,7 +96,7 @@ class ObjectTrackerNode(Node):
             'output_video_path', '/mnt/d/Dataset/Output/tracked_output.mp4'
         )
         self.declare_parameter('output_fps', 30.0)
-        self.declare_parameter('process_hz', 10.0)
+        self.declare_parameter('process_hz', 8.0)
         self.declare_parameter('min_det_score', 0.40)
         self.declare_parameter('top_k', 10)
         self.declare_parameter('allowed_labels', ['person','bicycle','car','motorcycle','bus','truck'])
@@ -95,6 +129,18 @@ class ObjectTrackerNode(Node):
             if hasattr(self.get_parameter('enable_output_video'), 'get_parameter_value')
             else True
         )
+        # Drawing controls
+        self.declare_parameter('draw_tracks', True)
+        self.declare_parameter('draw_unconfirmed_tracks', True)
+        self.declare_parameter('draw_detections', True)
+        try:
+            self.draw_tracks = bool(self.get_parameter('draw_tracks').get_parameter_value().bool_value)
+            self.draw_unconfirmed_tracks = bool(self.get_parameter('draw_unconfirmed_tracks').get_parameter_value().bool_value)
+            self.draw_detections = bool(self.get_parameter('draw_detections').get_parameter_value().bool_value)
+        except Exception:
+            self.draw_tracks = True
+            self.draw_unconfirmed_tracks = True
+            self.draw_detections = True
 
         # QoS: for real-time, keep detection queue shallow to avoid latency buildup
         det_qos = QoSProfile(depth=10)
@@ -151,6 +197,7 @@ class ObjectTrackerNode(Node):
         self._proc_timer = self.create_timer(period, self._process_tick, callback_group=self.cb_group)
         # In-flight guard to avoid overlapping processing
         self._proc_inflight = False
+        self._tick_idx = 0
 
     def image_callback(self, msg: Image):
         # Update last image and estimate FPS from image timestamps
@@ -240,8 +287,25 @@ class ObjectTrackerNode(Node):
 
         draw_img = self.last_image.copy() if self.last_image is not None else None
 
+        # Optionally draw current detections (from this tick) as thin boxes for visibility
+        if self.draw_detections and draw_img is not None and det_info:
+            for (dx1, dy1, dx2, dy2), dlabel, dscore in det_info:
+                color_det = (0, 255, 255)  # yellow for raw detections
+                cv2.rectangle(draw_img, (int(dx1), int(dy1)), (int(dx2), int(dy2)), color_det, 1)
+                cv2.putText(
+                    draw_img,
+                    f"{dlabel}:{dscore:.2f}",
+                    (int(dx1), max(0, int(dy1) - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color_det,
+                    1,
+                )
+
         for track in tracks:
-            if not track.is_confirmed():
+            if not self.draw_tracks:
+                break
+            if (not track.is_confirmed()) and (not self.draw_unconfirmed_tracks):
                 continue
             x1, y1, x2, y2 = track.to_ltrb()
             track_id = track.track_id
@@ -302,19 +366,13 @@ class ObjectTrackerNode(Node):
 
             tracked_msg.detections.append(bbox)
 
-            if draw_img is not None:
+            if draw_img is not None and self.draw_tracks:
                 color = CLASS_COLORS.get(best_label, (255, 255, 255))
                 cv2.rectangle(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
                 text = f"ID:{int(track_id)} {best_label}:{best_score:.2f}"
-                cv2.putText(
-                    draw_img,
-                    text,
-                    (int(x1), max(0, int(y1) - 5)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    color,
-                    2,
-                )
+                # draw text with thin outline for readability
+                cv2.putText(draw_img, text, (int(x1), max(0, int(y1) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 3)
+                cv2.putText(draw_img, text, (int(x1), max(0, int(y1) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
         self.publisher.publish(tracked_msg)
         self._pub_count += 1
@@ -401,7 +459,16 @@ class ObjectTrackerNode(Node):
         # DeepSort update with latency logging
         t0 = time.time()
         with self._tracker_lock:
-            tracks = self.tracker.update_tracks(dets, frame=self.last_image)
+            if self.tracker_backend.lower() == 'sort':
+                # Already handled in previous branch; keep here for completeness
+                tracks = tracks
+            else:
+                # Embed only every N ticks: run association on embed ticks; otherwise age tracks
+                self._tick_idx += 1
+                embed_now = (self._tick_idx % self.embed_every_n == 0)
+                dets_for_update = dets if embed_now else []
+                # Always pass frame to satisfy library requirement
+                tracks = self.tracker.update_tracks(dets_for_update, frame=self.last_image)
         proc_ms = (time.time() - t0) * 1000.0
         if self.log_detail:
             # detection to tick latency if header available
@@ -411,7 +478,10 @@ class ObjectTrackerNode(Node):
                     dt_ms = (self.get_clock().now().nanoseconds - (header.stamp.sec * 10**9 + header.stamp.nanosec)) / 1e6
             except Exception:
                 dt_ms = None
-            self.get_logger().info(f'[tick] deepsort proc={proc_ms:.1f}ms tracks={len(tracks)} det_to_tick_ms={dt_ms if dt_ms is not None else "n/a"}')
+            if self.tracker_backend.lower() == 'deepsort':
+                self.get_logger().info(
+                    f'[tick] deepsort proc={proc_ms:.1f}ms tracks={len(tracks)} det_to_tick_ms={dt_ms if dt_ms is not None else "n/a"} embed={"ON" if (self._tick_idx % self.embed_every_n == 0) else "SKIP"}'
+                )
 
         tracked_msg = Detection2DArray()
         if header is not None:

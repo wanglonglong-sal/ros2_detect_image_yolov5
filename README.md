@@ -21,6 +21,9 @@ run launch: ros2 launch bringup launch.py
 enter python virtual environment: source ~/ros2_env/bin/activate
 run python node: ros2 run detect yolov5_video_detector
 
+monitor rate: ros2 run bringup monitor_rates
+the monitor includes /image_raw /detections /tracked_objects /actions
+
 ### 配置文件
 
 `yolov5_video_detector` 节点通过 YAML 文件读取输入视频和输出视频路径。默认配置文件位于 `src/detect/config/yolov5_video_detector.yaml`，内容示例：

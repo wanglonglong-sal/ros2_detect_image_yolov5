@@ -14,7 +14,7 @@ action_recognizer:
     output_topic: "/actions"
     output_video_path: "/mnt/d/Dataset/Output/actions_output.mp4"
     output_fps: 30.0
-    enable_output_video: false
+    enable_output_video: true
     # Model & labels
     model_path: "/home/wanglonglong/Learn_ROS2/03.my_robot/src/action_recognizer/models/slowfast_ava_r101_64x2_ts.pt"
     labels_path: "/home/wanglonglong/Learn_ROS2/03.my_robot/src/action_recognizer/labels/ava_labels.txt"
