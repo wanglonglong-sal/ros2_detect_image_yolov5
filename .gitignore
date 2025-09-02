@@ -4,3 +4,4 @@ install/
 log/
 src/action_recognizer/models/*.pt
 
+src/action_recognizer/models/*.pt
