@@ -1,4 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/qos.hpp>
 #include <cv_bridge/cv_bridge.hpp>
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -8,8 +9,9 @@ class CameraSubscriber : public rclcpp::Node
 public:
     CameraSubscriber() : Node("camera_subscriber_node")
     {
+        // Use SensorData QoS (best-effort, small latency) to match image publishers
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/image_raw", 10,
+            "/image_raw", rclcpp::SensorDataQoS(),
             std::bind(&CameraSubscriber::image_callback, this, std::placeholders::_1));
     }
 

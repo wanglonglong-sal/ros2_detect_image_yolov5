@@ -7,6 +7,12 @@ import onnxruntime as ort
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import (
+    QoSProfile,
+    QoSHistoryPolicy,
+    QoSReliabilityPolicy,
+    qos_profile_sensor_data,
+)
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from ament_index_python.packages import get_package_share_directory
@@ -158,9 +164,14 @@ class YoloV5OnnxSubscriber(Node):
             if not self.writer.isOpened():
                 self.get_logger().error(f"Failed to create output video: {output_path}")
 
-        # Publishers
-        self.image_pub = self.create_publisher(Image, '/image_raw', 10)
-        self.det_pub = self.create_publisher(Detection2DArray, '/detections', 10)
+        # Publishers (SensorDataQoS for images; larger queue for detections)
+        img_qos = qos_profile_sensor_data
+        self.image_pub = self.create_publisher(Image, '/image_raw', img_qos)
+
+        det_qos = QoSProfile(depth=10)
+        det_qos.history = QoSHistoryPolicy.KEEP_LAST
+        det_qos.reliability = QoSReliabilityPolicy.RELIABLE
+        self.det_pub = self.create_publisher(Detection2DArray, '/detections', det_qos)
 
         # Timer
         self.timer = self.create_timer(1 / 30.0, self.timer_callback)
@@ -312,4 +323,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-

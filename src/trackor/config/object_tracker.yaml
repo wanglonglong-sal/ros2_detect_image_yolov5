@@ -1,7 +1,7 @@
 object_tracker:
   ros__parameters:
     # Toggle writing the tracked video
-    enable_output_video: true
+    enable_output_video: false
 
     # Default output path and fps (can be overridden by launch arg)
     output_video_path: "/mnt/d/Dataset/Output/tracked_output.mp4"

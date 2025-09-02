@@ -1,9 +1,17 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import (
+    QoSProfile,
+    QoSHistoryPolicy,
+    QoSReliabilityPolicy,
+    qos_profile_sensor_data,
+)
+from rclpy.callback_groups import ReentrantCallbackGroup
 from typing import Dict, Deque, Tuple, Optional
 from collections import defaultdict, deque
 import numpy as np
 import cv2
+import threading
 
 from sensor_msgs.msg import Image
 from vision_msgs.msg import (
@@ -25,6 +33,8 @@ class ActionRecognizerNode(Node):
     def __init__(self):
         super().__init__('action_recognizer')
         self.bridge = CvBridge()
+        # Allow callbacks to run concurrently within this node
+        self.cb_group = ReentrantCallbackGroup()
 
         # Parameters
         self.declare_parameter('backend', 'stub')
@@ -95,6 +105,7 @@ class ActionRecognizerNode(Node):
         self.track_steps: Dict[int, int] = defaultdict(int)
         self.track_last_action: Dict[int, Tuple[str, float]] = {}
         self.writer: Optional[cv2.VideoWriter] = None
+        self._writer_lock = threading.Lock()
         # FPS estimation from incoming image timestamps (used if output_fps <= 0)
         self._prev_img_time_sec: Optional[float] = None
         self._estimated_fps: float = 0.0
@@ -110,11 +121,35 @@ class ActionRecognizerNode(Node):
         }
 
         # Subscriptions
-        self.image_sub = self.create_subscription(Image, '/image_raw', self.image_callback, 10)
-        self.tracks_sub = self.create_subscription(Detection2DArray, '/tracked_objects', self.tracks_callback, 10)
+        img_qos = qos_profile_sensor_data
+        tracks_qos = QoSProfile(depth=200)
+        tracks_qos.history = QoSHistoryPolicy.KEEP_LAST
+        tracks_qos.reliability = QoSReliabilityPolicy.RELIABLE
+
+        self.image_sub = self.create_subscription(
+            Image,
+            '/image_raw',
+            self.image_callback,
+            img_qos,
+            callback_group=self.cb_group,
+        )
+        self.tracks_sub = self.create_subscription(
+            Detection2DArray,
+            '/tracked_objects',
+            self.tracks_callback,
+            tracks_qos,
+            callback_group=self.cb_group,
+        )
 
         # Publisher
-        self.actions_pub = self.create_publisher(Detection2DArray, self.output_topic, 10)
+        actions_qos = QoSProfile(depth=200)
+        actions_qos.history = QoSHistoryPolicy.KEEP_LAST
+        actions_qos.reliability = QoSReliabilityPolicy.RELIABLE
+        self.actions_pub = self.create_publisher(
+            Detection2DArray,
+            self.output_topic,
+            actions_qos,
+        )
 
         self.get_logger().info('ActionRecognizerNode started; waiting for tracks and images')
 
@@ -348,25 +383,29 @@ class ActionRecognizerNode(Node):
 
         # Initialize writer lazily and write frame
         if self.enable_output_video and self.output_video_path:
-            if self.writer is None:
-                h, w = draw_img.shape[:2]
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                fps = float(self.output_fps) if float(self.output_fps) > 0 else (
-                    float(self._estimated_fps) if self._estimated_fps > 0 else 30.0
-                )
-                self.writer = cv2.VideoWriter(self.output_video_path, fourcc, fps, (w, h))
-                if not self.writer.isOpened():
-                    self.get_logger().error(f"Failed to open action output video: {self.output_video_path}")
-                    self.writer = None
-            if self.writer is not None:
-                self.writer.write(draw_img)
+            with self._writer_lock:
+                if self.writer is None:
+                    h, w = draw_img.shape[:2]
+                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                    fps = float(self.output_fps) if float(self.output_fps) > 0 else (
+                        float(self._estimated_fps) if self._estimated_fps > 0 else 30.0
+                    )
+                    self.writer = cv2.VideoWriter(self.output_video_path, fourcc, fps, (w, h))
+                    if not self.writer.isOpened():
+                        self.get_logger().error(f"Failed to open action output video: {self.output_video_path}")
+                        self.writer = None
+                if self.writer is not None:
+                    self.writer.write(draw_img)
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = ActionRecognizerNode()
+    from rclpy.executors import MultiThreadedExecutor
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
